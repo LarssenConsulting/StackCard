@@ -70,7 +70,7 @@ class ParsersTest(unittest.TestCase):
         self.assertEqual(env["DB_USERNAME"], "shop")
         self.assertEqual(env["DB_DATABASE"], "shop")
         self.assertNotIn("DB_HOST", env)
-        self.assertNotIn("leaked", json.dumps(env))
+        self.assertNotIn("leaked", json.dumps(dbrefs.refs_from_env(env)))
 
     def test_refs_from_laravel_env(self):
         self.assertEqual(
