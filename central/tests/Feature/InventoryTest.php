@@ -93,6 +93,19 @@ it('accepts a server without Apache or MySQL', function () {
         ->and($server->refresh()->apache_version)->toBeNull();
 });
 
+it('accepts Apache without sites and MySQL without databases, accounts or grants', function () {
+    [$server, $token] = enrolledServer();
+
+    sendInventory($this, $token, snapshotFixture(function ($s) {
+        $s['apache']['sites'] = [];
+        $s['mysql'] = ['version' => '8.0.39', 'databases' => [], 'users' => [], 'grants' => []];
+
+        return $s;
+    }))->assertOk();
+
+    expect($server->refresh()->mysql_version)->toBe('8.0.39');
+});
+
 it('rejects a request without a token', function () {
     $this->postJson('/api/v1/inventory', snapshotFixture())->assertUnauthorized();
     expect(Snapshot::count())->toBe(0);

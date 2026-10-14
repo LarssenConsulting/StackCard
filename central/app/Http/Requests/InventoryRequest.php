@@ -21,6 +21,11 @@ class InventoryRequest extends FormRequest
     {
         $name = ['nullable', 'string', 'max:255'];
         $path = ['nullable', 'string', 'max:1024'];
+        // A section that is not null must carry its lists, but they may be
+        // empty: Apache without vhosts, MySQL without grants are real cases.
+        $listOf = fn (string $section, int $max) => $this->input($section) === null
+            ? ['prohibited']
+            : ['present', 'array', "max:{$max}"];
 
         return [
             'schema_version' => ['required', 'integer', Rule::in([1])],
@@ -42,7 +47,7 @@ class InventoryRequest extends FormRequest
 
             'apache' => ['present', 'nullable', 'array'],
             'apache.version' => $name,
-            'apache.sites' => ['required_with:apache', 'array', 'max:2000'],
+            'apache.sites' => $listOf('apache', 2000),
             'apache.sites.*.server_name' => $name,
             'apache.sites.*.aliases' => ['present', 'array', 'max:200'],
             'apache.sites.*.aliases.*' => ['string', 'max:255'],
@@ -69,13 +74,13 @@ class InventoryRequest extends FormRequest
 
             'mysql' => ['present', 'nullable', 'array'],
             'mysql.version' => $name,
-            'mysql.databases' => ['required_with:mysql', 'array', 'max:10000'],
+            'mysql.databases' => $listOf('mysql', 10000),
             'mysql.databases.*.name' => ['required', 'string', 'max:64'],
             'mysql.databases.*.size_bytes' => ['required', 'integer', 'min:0'],
-            'mysql.users' => ['required_with:mysql', 'array', 'max:10000'],
+            'mysql.users' => $listOf('mysql', 10000),
             'mysql.users.*.user' => ['present', 'nullable', 'string', 'max:80'],
             'mysql.users.*.host' => ['required', 'string', 'max:255'],
-            'mysql.grants' => ['required_with:mysql', 'array', 'max:50000'],
+            'mysql.grants' => $listOf('mysql', 50000),
             'mysql.grants.*.user' => ['present', 'nullable', 'string', 'max:80'],
             'mysql.grants.*.host' => ['required', 'string', 'max:255'],
             'mysql.grants.*.database' => ['nullable', 'string', 'max:64'],
