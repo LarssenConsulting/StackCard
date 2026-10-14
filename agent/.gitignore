@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 dist/
+integration/.build/
+integration/discover-agent.deb

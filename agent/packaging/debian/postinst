@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+    install -d -m 0700 -o root -g root /etc/discover-agent /var/lib/discover-agent
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload || true
+        # Only an enrolled agent has something to send.
+        if [ -f /etc/discover-agent/credentials ]; then
+            systemctl enable --now discover-agent.timer || true
+        fi
+    fi
+fi
+
+exit 0

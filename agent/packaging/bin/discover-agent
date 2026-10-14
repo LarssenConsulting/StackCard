@@ -1,0 +1,9 @@
+#!/bin/sh
+# -I (isolated mode): ignore PYTHON* variables and the user site directory,
+# so nothing in root's environment can inject code into the agent.
+exec /usr/bin/python3 -I -c '
+import sys
+sys.path.insert(0, "/usr/lib/discover-agent")
+from discover_agent.cli import main
+sys.exit(main())
+' "$@"
