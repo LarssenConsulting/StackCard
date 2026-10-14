@@ -14,40 +14,50 @@ use Illuminate\Support\Facades\DB;
  */
 class IngestSnapshot
 {
+    public function __construct(private LinkDatabases $linkDatabases) {}
+
     public function __invoke(Server $server, array $snapshot, ?string $sourceIp): Snapshot
     {
         return DB::transaction(function () use ($server, $snapshot, $sourceIp) {
-            $record = $server->snapshots()->create([
-                'received_at' => now(),
-                'source_ip' => $sourceIp,
-                'schema_version' => $snapshot['schema_version'],
-                'payload' => $snapshot,
-                'error_count' => count($snapshot['errors']),
-                'warnings' => $this->warnings($server, $snapshot),
-            ]);
-
-            $info = $snapshot['server'];
-            $server->update([
-                'hostname' => $info['hostname'],
-                'fqdn' => $info['fqdn'] ?? null,
-                'primary_ip' => $info['primary_ip'] ?? null,
-                'os' => $info['os'] ?? null,
-                'kernel' => $info['kernel'] ?? null,
-                'virtualization' => $info['virtualization'] ?? null,
-                'apache_version' => $snapshot['apache']['version'] ?? null,
-                'mysql_version' => $snapshot['mysql']['version'] ?? null,
-                'agent_version' => $snapshot['agent_version'] ?? null,
-                'last_seen_at' => now(),
-                'last_source_ip' => $sourceIp,
-            ]);
-
-            $this->clearState($server);
-            $this->storeIps($server, $info['interfaces']);
-            $this->storeSites($server, $snapshot['apache']['sites'] ?? []);
-            $this->storeMysql($server, $snapshot['mysql'] ?? null);
+            $record = $this->store($server, $snapshot, $sourceIp);
+            ($this->linkDatabases)();
 
             return $record;
         });
+    }
+
+    private function store(Server $server, array $snapshot, ?string $sourceIp): Snapshot
+    {
+        $record = $server->snapshots()->create([
+            'received_at' => now(),
+            'source_ip' => $sourceIp,
+            'schema_version' => $snapshot['schema_version'],
+            'payload' => $snapshot,
+            'error_count' => count($snapshot['errors']),
+            'warnings' => $this->warnings($server, $snapshot),
+        ]);
+
+        $info = $snapshot['server'];
+        $server->update([
+            'hostname' => $info['hostname'],
+            'fqdn' => $info['fqdn'] ?? null,
+            'primary_ip' => $info['primary_ip'] ?? null,
+            'os' => $info['os'] ?? null,
+            'kernel' => $info['kernel'] ?? null,
+            'virtualization' => $info['virtualization'] ?? null,
+            'apache_version' => $snapshot['apache']['version'] ?? null,
+            'mysql_version' => $snapshot['mysql']['version'] ?? null,
+            'agent_version' => $snapshot['agent_version'] ?? null,
+            'last_seen_at' => now(),
+            'last_source_ip' => $sourceIp,
+        ]);
+
+        $this->clearState($server);
+        $this->storeIps($server, $info['interfaces']);
+        $this->storeSites($server, $snapshot['apache']['sites'] ?? []);
+        $this->storeMysql($server, $snapshot['mysql'] ?? null);
+
+        return $record;
     }
 
     private function warnings(Server $server, array $snapshot): array
