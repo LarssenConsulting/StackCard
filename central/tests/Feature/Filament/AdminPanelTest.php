@@ -1,0 +1,152 @@
+<?php
+
+use App\Filament\Resources\Databases\Pages\ListDatabases;
+use App\Filament\Resources\Databases\Pages\ViewDatabase;
+use App\Filament\Resources\Servers\Pages\CreateServer;
+use App\Filament\Resources\Servers\Pages\ListServers;
+use App\Filament\Resources\Servers\Pages\ViewServer;
+use App\Filament\Resources\Servers\RelationManagers\SitesRelationManager;
+use App\Filament\Resources\Servers\RelationManagers\SnapshotsRelationManager;
+use App\Filament\Resources\Sites\Pages\ListSites;
+use App\Filament\Resources\Sites\Pages\ViewSite;
+use App\Filament\Widgets\ExpiringCertificates;
+use App\Filament\Widgets\InventoryStats;
+use App\Filament\Widgets\PartialSites;
+use App\Filament\Widgets\RecentCollectorErrors;
+use App\Filament\Widgets\StaleServers;
+use App\Models\Database;
+use App\Models\EnrollmentToken;
+use App\Models\Server;
+use App\Models\Site;
+use App\Models\User;
+use Filament\Facades\Filament;
+use Livewire\Livewire;
+
+beforeEach(function () {
+    $this->travelTo(now()->parse('2026-10-14 12:00:00'));
+    [$this->web, $token] = enrolledServer();
+    $this->withToken($token)->postJson('/api/v1/inventory', snapshotFixture())->assertOk();
+    app('auth')->forgetGuards();
+    $this->actingAs(User::factory()->create(), 'web');
+});
+
+it('sends guests to the login page', function () {
+    app('auth')->forgetGuards();
+    $this->get('/admin')->assertRedirect('/admin/login');
+});
+
+it('requires a time-based second factor to be available', function () {
+    expect(Filament::getPanel('admin')->getMultiFactorAuthenticationProviders())->not->toBeEmpty();
+});
+
+it('lists servers with their address and site count', function () {
+    Livewire::test(ListServers::class)
+        ->assertCanSeeTableRecords([$this->web])
+        ->assertSee('10.0.0.11');
+});
+
+it('creates a server from its name only', function () {
+    Livewire::test(CreateServer::class)
+        ->fillForm(['name' => 'web02', 'notes' => 'VM Proxmox'])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Server::where('name', 'web02')->sole()->status)->toBe(Server::STATUS_PENDING);
+});
+
+it('shows a server sheet', function () {
+    Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])
+        ->assertSee('Ubuntu 24.04.1 LTS')
+        ->assertSee('web01.example.lan')
+        ->assertSee('10.11.8-MariaDB');
+});
+
+it('lists a server sites and snapshots in its tabs', function () {
+    Livewire::test(SitesRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
+        ->assertCanSeeTableRecords($this->web->sites);
+    Livewire::test(SnapshotsRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
+        ->assertCanSeeTableRecords($this->web->snapshots);
+});
+
+it('generates an enrollment token and shows the command once', function () {
+    Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])
+        ->callAction('generateEnrollmentToken')
+        ->assertNotified();
+
+    expect(EnrollmentToken::where('server_id', $this->web->id)->whereNull('used_at')->count())->toBe(1);
+});
+
+it('revokes a server', function () {
+    Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])
+        ->callAction('revoke');
+
+    $this->web->refresh();
+    expect($this->web->status)->toBe(Server::STATUS_REVOKED)
+        ->and($this->web->tokens()->count())->toBe(0);
+});
+
+it('finds a site by alias and filters by type', function () {
+    $shop = Site::where('server_name', 'shop.example.com')->get();
+    $api = Site::where('server_name', 'api.example.com')->get();
+
+    Livewire::test(ListSites::class)
+        ->searchTable('www.shop')
+        ->assertCanSeeTableRecords($shop)
+        ->assertCanNotSeeTableRecords($api);
+
+    Livewire::test(ListSites::class)
+        ->filterTable('type', 'node')
+        ->assertCanSeeTableRecords($api)
+        ->assertCanNotSeeTableRecords($shop);
+});
+
+it('shows the chain from a site to its database account', function () {
+    $site = Site::where('server_name', 'shop.example.com')->where('port', 443)->sole();
+
+    Livewire::test(ViewSite::class, ['record' => $site->getRouteKey()])
+        ->assertSee('web01')
+        ->assertSee('/var/www/shop/public')
+        ->assertSee('shop_prod')
+        ->assertSee('shop@localhost');
+});
+
+it('filters orphan databases', function () {
+    Livewire::test(ListDatabases::class)
+        ->filterTable('orphans')
+        ->assertCanSeeTableRecords(Database::where('name', 'orphan_db')->get())
+        ->assertCanNotSeeTableRecords(Database::where('name', 'shop_prod')->get());
+});
+
+it('shows which sites use a database', function () {
+    $database = Database::where('name', 'shop_prod')->sole();
+
+    Livewire::test(ViewDatabase::class, ['record' => $database->getRouteKey()])
+        ->assertSee('shop.example.com');
+});
+
+it('summarises the inventory on the dashboard', function () {
+    Livewire::test(InventoryStats::class)->assertSee('Serveurs')->assertSee('Sites');
+});
+
+it('flags servers that stopped reporting', function () {
+    $silent = Server::create(['name' => 'silent', 'status' => Server::STATUS_ACTIVE, 'last_seen_at' => now()->subHours(5)]);
+
+    Livewire::test(StaleServers::class)
+        ->assertCanSeeTableRecords([$silent])
+        ->assertCanNotSeeTableRecords([$this->web]);
+});
+
+it('flags certificates expiring within 30 days', function () {
+    Livewire::test(ExpiringCertificates::class)
+        ->assertCanSeeTableRecords(Site::where('server_name', 'api.example.com')->get())
+        ->assertCanNotSeeTableRecords(Site::where('server_name', 'shop.example.com')->get());
+});
+
+it('lists partial sites and recent collector errors', function () {
+    Site::where('server_name', 'api.example.com')->update(['partial' => true]);
+
+    Livewire::test(PartialSites::class)
+        ->assertCanSeeTableRecords(Site::where('partial', true)->get());
+    Livewire::test(RecentCollectorErrors::class)
+        ->assertCanSeeTableRecords($this->web->snapshots);
+});
