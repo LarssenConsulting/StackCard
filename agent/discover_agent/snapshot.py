@@ -1,0 +1,68 @@
+"""Assemble collector results into one snapshot; one failing collector never stops the others."""
+
+from discover_agent import __version__, util
+from discover_agent.collectors import apache, dbrefs, mysql, server, sites
+
+SCHEMA_VERSION = 1
+
+
+def _describe(exc):
+    if isinstance(exc, (util.CollectorError, util.CommandError)):
+        return str(exc)
+    return f"{type(exc).__name__}: {exc}"
+
+
+def collect_apache(
+    errors,
+    has_apache=lambda: util.which("apache2ctl"),
+    runner=util.run,
+    load_vhosts=None,
+    build_context=None,
+    classify=sites.classify,
+    find_db_refs=dbrefs.find_db_refs,
+):
+    if not has_apache():
+        return None
+    load_vhosts = load_vhosts or (lambda: apache.load_vhosts(runner=runner))
+    build_context = build_context or (lambda: sites.build_context(runner=runner))
+    try:
+        version = apache.parse_version(runner(["apache2", "-v"]))
+    except util.CommandError:
+        version = None
+    context = build_context()
+    collected = []
+    for vhost in load_vhosts():
+        try:
+            site = classify(vhost, context)
+            site["db_refs"] = find_db_refs(site.get("app_dir"))
+        except Exception as exc:  # one odd vhost must not hide the others
+            errors.append({"collector": "apache", "message": f"{vhost.get('server_name')}: {_describe(exc)}"})
+            continue
+        collected.append(site)
+    return {"version": version, "sites": collected}
+
+
+def default_collectors(errors):
+    return {
+        "server": server.collect_server,
+        "apache": lambda: collect_apache(errors),
+        "mysql": mysql.collect_mysql,
+    }
+
+
+def build_snapshot(collectors=None):
+    errors = []
+    collectors = collectors if collectors is not None else default_collectors(errors)
+    snap = {
+        "schema_version": SCHEMA_VERSION,
+        "collected_at": util.now_utc(),
+        "agent_version": __version__,
+    }
+    for name, collect in collectors.items():
+        try:
+            snap[name] = collect()
+        except Exception as exc:
+            snap[name] = None
+            errors.append({"collector": name, "message": _describe(exc)})
+    snap["errors"] = errors
+    return snap
