@@ -79,12 +79,13 @@ class InventoryRequest extends FormRequest
             'mysql.databases.*.size_bytes' => ['required', 'integer', 'min:0'],
             'mysql.users' => $listOf('mysql', 10000),
             'mysql.users.*.user' => ['present', 'nullable', 'string', 'max:80'],
-            'mysql.users.*.host' => ['required', 'string', 'max:255'],
+            // MariaDB roles live in mysql.user with an empty host.
+            'mysql.users.*.host' => ['present', 'nullable', 'string', 'max:255'],
             'mysql.grants' => $listOf('mysql', 50000),
             'mysql.grants.*.user' => ['present', 'nullable', 'string', 'max:80'],
-            'mysql.grants.*.host' => ['required', 'string', 'max:255'],
+            'mysql.grants.*.host' => ['present', 'nullable', 'string', 'max:255'],
             'mysql.grants.*.database' => ['nullable', 'string', 'max:64'],
-            'mysql.grants.*.privileges' => ['required', 'array', 'max:64'],
+            'mysql.grants.*.privileges' => ['required', 'array', 'max:256'],
             'mysql.grants.*.privileges.*' => ['string', 'max:64'],
             'mysql.grants.*.global' => ['required', 'boolean'],
 

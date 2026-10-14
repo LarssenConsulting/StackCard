@@ -117,12 +117,12 @@ class IngestSnapshot
 
         $accounts = [];
         foreach ($mysql['users'] as $user) {
-            $key = ($user['user'] ?? '').'@'.$user['host'];
-            $accounts[$key] ??= $server->dbUsers()->create(['user' => $user['user'] ?? '', 'host' => $user['host']]);
+            $key = ($user['user'] ?? '').'@'.($user['host'] ?? '');
+            $accounts[$key] ??= $server->dbUsers()->create(['user' => $user['user'] ?? '', 'host' => $user['host'] ?? '']);
         }
 
         foreach ($mysql['grants'] as $grant) {
-            $account = $accounts[($grant['user'] ?? '').'@'.$grant['host']] ?? null;
+            $account = $accounts[($grant['user'] ?? '').'@'.($grant['host'] ?? '')] ?? null;
             $databaseId = $grant['database'] !== null ? ($databases[$grant['database']] ?? null) : null;
             // A grant on a pattern or a missing database has nothing to point at.
             if (! $account || (! $grant['global'] && $databaseId === null)) {

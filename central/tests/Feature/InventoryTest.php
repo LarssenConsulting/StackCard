@@ -106,6 +106,34 @@ it('accepts Apache without sites and MySQL without databases, accounts or grants
     expect($server->refresh()->mysql_version)->toBe('8.0.39');
 });
 
+it('accepts MariaDB roles, which have an empty host', function () {
+    [$server, $token] = enrolledServer();
+
+    sendInventory($this, $token, snapshotFixture(function ($s) {
+        $s['mysql']['users'][] = ['user' => 'app_role', 'host' => ''];
+        $s['mysql']['grants'][] = [
+            'user' => 'app_role', 'host' => '', 'database' => 'shop_prod', 'privileges' => ['SELECT'], 'global' => false,
+        ];
+
+        return $s;
+    }))->assertOk();
+
+    $role = $server->dbUsers()->where('user', 'app_role')->sole();
+    expect($role->host)->toBe('')
+        ->and($role->grants()->count())->toBe(1);
+});
+
+it('accepts an account holding every MySQL 8 dynamic privilege', function () {
+    [, $token] = enrolledServer();
+    $privileges = array_map(fn ($i) => "PRIV_{$i}", range(1, 90));
+
+    sendInventory($this, $token, snapshotFixture(function ($s) use ($privileges) {
+        $s['mysql']['grants'][1]['privileges'] = $privileges;
+
+        return $s;
+    }))->assertOk();
+});
+
 it('rejects a request without a token', function () {
     $this->postJson('/api/v1/inventory', snapshotFixture())->assertUnauthorized();
     expect(Snapshot::count())->toBe(0);

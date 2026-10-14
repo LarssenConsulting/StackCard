@@ -64,18 +64,18 @@ return new class extends Migration
             $table->json('aliases');
             $table->unsignedInteger('port')->nullable();
             $table->boolean('https')->default(false);
-            $table->timestamp('cert_expires_at')->nullable();
+            $table->dateTime('cert_expires_at')->nullable(); // TIMESTAMP stops in 2038
             $table->string('type');
-            $table->string('document_root')->nullable();
-            $table->string('app_dir')->nullable();
-            $table->string('upstream')->nullable();
+            $table->string('document_root', 1024)->nullable();
+            $table->string('app_dir', 1024)->nullable();
+            $table->string('upstream', 1024)->nullable();
             $table->string('php_version')->nullable();
             $table->string('system_user')->nullable();
             $table->string('system_group')->nullable();
             $table->string('owner_user')->nullable();
             $table->string('owner_group')->nullable();
             $table->string('process_manager')->nullable();
-            $table->string('config_file')->nullable();
+            $table->string('config_file', 1024)->nullable();
             $table->boolean('partial')->default(false);
             $table->timestamps();
         });
@@ -87,7 +87,8 @@ return new class extends Migration
             $table->string('name');
             $table->unsignedBigInteger('size_bytes')->default(0);
             $table->timestamps();
-            $table->unique(['server_id', 'name']);
+            // Not unique: MySQL names are case-sensitive on Linux, a *_ci central is not.
+            $table->index(['server_id', 'name']);
         });
 
         Schema::create('db_users', function (Blueprint $table) {
@@ -96,7 +97,7 @@ return new class extends Migration
             $table->string('user');
             $table->string('host');
             $table->timestamps();
-            $table->unique(['server_id', 'user', 'host']);
+            $table->index(['server_id', 'user']);
         });
 
         Schema::create('db_grants', function (Blueprint $table) {
@@ -113,7 +114,7 @@ return new class extends Migration
             $table->string('db_name');
             $table->string('db_user')->nullable();
             $table->string('db_host')->nullable();
-            $table->string('source')->nullable();
+            $table->string('source', 1024)->nullable();
             // References may point at another server's database: they survive
             // that server's next snapshot and are re-linked afterwards.
             $table->foreignId('database_id')->nullable()->constrained('db_databases')->nullOnDelete();
