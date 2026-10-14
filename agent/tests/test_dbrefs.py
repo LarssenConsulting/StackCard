@@ -64,6 +64,15 @@ class ParsersTest(unittest.TestCase):
             {"db_name": "api_prod", "db_user": "api", "db_host": "db.lan"},
         )
 
+    def test_database_url_password_with_url_delimiters_never_leaks(self):
+        for password in ("pa/ss", "pa#ss", "pa?ss", "p/a#s?s@x"):
+            url = f"mysql://api:{password}@db.lan:3306/api_prod?ssl=true"
+            ref = dbrefs.parse_database_url(url)
+            self.assertEqual(
+                ref, {"db_name": "api_prod", "db_user": "api", "db_host": "db.lan"}, url
+            )
+            self.assertNotIn(password, json.dumps(ref))
+
     def test_non_mysql_url_is_ignored(self):
         self.assertIsNone(dbrefs.parse_database_url("postgres://u:p@h/db"))
         self.assertIsNone(dbrefs.parse_database_url(""))
@@ -120,6 +129,36 @@ class FindDbRefsTest(unittest.TestCase):
         dumped = json.dumps(dbrefs.find_db_refs(os.path.join(self.root, "all")))
         for secret in ("s3cret", "k3y", "p%40ss", "p@ss"):
             self.assertNotIn(secret, dumped)
+
+    def test_fifo_config_file_is_skipped_without_blocking(self):
+        import threading
+
+        os.makedirs(os.path.join(self.root, "fifo"))
+        os.mkfifo(os.path.join(self.root, "fifo/.env"))
+        result = []
+        worker = threading.Thread(
+            target=lambda: result.append(dbrefs.find_db_refs(os.path.join(self.root, "fifo"))),
+            daemon=True,
+        )
+        worker.start()
+        worker.join(2)
+        self.assertFalse(worker.is_alive(), "find_db_refs blocked on a FIFO")
+        self.assertEqual(result, [[]])
+
+    def test_oversized_config_file_is_skipped(self):
+        self.write("big/.env", "DB_DATABASE=big\nDB_USERNAME=u\n" + "#" * (2 * 1024 * 1024))
+        self.assertEqual(dbrefs.find_db_refs(os.path.join(self.root, "big")), [])
+
+    def test_symlinked_shared_env_is_still_read(self):
+        target = self.write("shared/.env", "DB_DATABASE=deployed\nDB_USERNAME=u\n")
+        os.makedirs(os.path.join(self.root, "release"))
+        os.symlink(target, os.path.join(self.root, "release/.env"))
+        refs = dbrefs.find_db_refs(os.path.join(self.root, "release"))
+        self.assertEqual([r["db_name"] for r in refs], ["deployed"])
+
+    def test_values_that_are_not_identifiers_are_dropped(self):
+        self.write("odd/.env", "DB_DATABASE=shop prod;--\nDB_USERNAME=u\n")
+        self.assertEqual(dbrefs.find_db_refs(os.path.join(self.root, "odd")), [])
 
     def test_missing_dir_returns_empty(self):
         self.assertEqual(dbrefs.find_db_refs(os.path.join(self.root, "nope")), [])

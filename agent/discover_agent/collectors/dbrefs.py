@@ -19,6 +19,8 @@ _WP_DEFINE = re.compile(
     r"""define\(\s*['"](DB_NAME|DB_USER|DB_HOST)['"]\s*,\s*['"]([^'"]*)['"]\s*\)"""
 )
 _ENV_LINE = re.compile(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$")
+_IDENTIFIER = re.compile(r"^[A-Za-z0-9_$.\-]{1,64}$")
+_HOST = re.compile(r"^[A-Za-z0-9_.\-:\[\]%/]{1,255}$")
 
 
 def parse_wp_config(text):
@@ -54,19 +56,31 @@ def parse_env(text):
 
 
 def parse_database_url(url):
-    if not url:
+    """Parse mysql://user:password@host:port/name without trusting urlsplit.
+
+    Real-world passwords are often not percent-encoded. urlsplit would stop the
+    authority at the first '/', '?' or '#' inside the password and leak the rest
+    into the path, so the credentials are cut at the LAST '@' instead.
+    """
+    scheme, sep, rest = (url or "").partition("://")
+    if not sep or not scheme.lower().startswith(MYSQL_SCHEMES):
         return None
-    parts = urlsplit(url)
-    if not parts.scheme.lower().startswith(MYSQL_SCHEMES):
-        return None
+    userinfo, at, location = rest.rpartition("@")
+    user = unquote(userinfo.split(":", 1)[0]) if at else None
+    parts = urlsplit("//" + location)
     name = parts.path.lstrip("/")
     if not name:
         return None
-    return {
-        "db_name": unquote(name),
-        "db_user": unquote(parts.username) if parts.username else None,
-        "db_host": parts.hostname,
-    }
+    return {"db_name": unquote(name), "db_user": user or None, "db_host": parts.hostname}
+
+
+def _is_clean(ref):
+    """Drop anything that does not look like a name: a misparse must not ship secrets."""
+    if not ref["db_name"] or not _IDENTIFIER.match(ref["db_name"]):
+        return False
+    if ref["db_user"] and not _IDENTIFIER.match(ref["db_user"]):
+        return False
+    return not ref["db_host"] or bool(_HOST.match(ref["db_host"]))
 
 
 def refs_from_env(env):
@@ -93,7 +107,7 @@ def _refs_from_file(path, text):
     return refs_from_env(parse_env(text))
 
 
-def find_db_refs(app_dir, reader=util.read_text):
+def find_db_refs(app_dir, reader=util.read_regular_file):
     if not app_dir:
         return []
     directory = os.path.abspath(app_dir)
@@ -105,7 +119,7 @@ def find_db_refs(app_dir, reader=util.read_text):
             if text is None:
                 continue
             found_file = True
-            for ref in _refs_from_file(path, text):
+            for ref in filter(_is_clean, _refs_from_file(path, text)):
                 key = (ref["db_name"], ref["db_user"], ref["db_host"])
                 if key not in seen:
                     seen.add(key)

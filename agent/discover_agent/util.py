@@ -1,6 +1,8 @@
 """Small helpers shared by every collector."""
 
+import os
 import shutil
+import stat
 import subprocess
 from datetime import datetime, timezone
 
@@ -37,6 +39,30 @@ def read_text(path):
             return fh.read()
     except OSError:
         return None
+
+
+def read_regular_file(path, limit=1024 * 1024):
+    """Read a file a non-root user may control: regular files under `limit` only.
+
+    O_NONBLOCK keeps a FIFO from hanging the agent; the fstat checks run on the
+    opened descriptor so a swapped symlink cannot slip past them.
+    """
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOCTTY", 0))
+    except OSError:
+        return None
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_size > limit:
+            return None
+        data = os.read(fd, limit + 1)
+    except OSError:
+        return None
+    finally:
+        os.close(fd)
+    if len(data) > limit:
+        return None
+    return data.decode("utf-8", errors="replace")
 
 
 def iso_utc(dt):
