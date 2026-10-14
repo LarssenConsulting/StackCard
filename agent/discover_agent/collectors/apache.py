@@ -1,0 +1,150 @@
+"""Apache virtual hosts: which ones are active and what each one declares."""
+
+import re
+import shlex
+
+from discover_agent import util
+
+_CTL_LOCATION = re.compile(r"\((/[^():]+):(\d+)\)")
+_VHOST_OPEN = re.compile(r"^<VirtualHost\s+([^>]*)>", re.IGNORECASE)
+_VHOST_CLOSE = re.compile(r"^</VirtualHost\s*>", re.IGNORECASE)
+_LOCATION_OPEN = re.compile(r"^<Location\s+\"?([^\">]*)\"?\s*>", re.IGNORECASE)
+_LOCATION_CLOSE = re.compile(r"^</Location\s*>", re.IGNORECASE)
+_FPM_HANDLER = re.compile(r"proxy:unix:([^|\"]+)\|", re.IGNORECASE)
+_USE_MACRO = re.compile(r"^\s*Use\s+\S", re.IGNORECASE | re.MULTILINE)
+
+# Only variables in these directives change what we report about a site.
+_PARTIAL_DIRECTIVES = {"servername", "documentroot", "proxypass", "sethandler"}
+
+
+def parse_ctl_s(text):
+    seen = []
+    for match in _CTL_LOCATION.finditer(text):
+        location = (match.group(1), int(match.group(2)))
+        if location not in seen:
+            seen.append(location)
+    return seen
+
+
+def parse_version(text):
+    match = re.search(r"Server version:\s*(.+)", text)
+    return match.group(1).strip() if match else None
+
+
+def file_uses_macro(text):
+    return bool(_USE_MACRO.search(text))
+
+
+def _logical_lines(text):
+    """Yield (line_number, stripped_line), joining backslash continuations."""
+    buffer, start = "", None
+    for number, raw in enumerate(text.splitlines(), start=1):
+        line = raw.strip()
+        if start is None:
+            start = number
+        if line.endswith("\\"):
+            buffer += line[:-1] + " "
+            continue
+        yield start, (buffer + line).strip()
+        buffer, start = "", None
+    if buffer:
+        yield start, buffer.strip()
+
+
+def _split_args(value):
+    try:
+        return shlex.split(value)
+    except ValueError:
+        return value.split()
+
+
+def _new_block(header):
+    port_match = re.search(r":(\d+)", header)
+    return {
+        "server_name": None,
+        "aliases": [],
+        "port": int(port_match.group(1)) if port_match else None,
+        "ssl": False,
+        "cert_file": None,
+        "document_root": None,
+        "proxy_pass": None,
+        "fpm_socket": None,
+        "assign_user": None,
+        "partial": False,
+    }
+
+
+def _apply_directive(block, name, args, location):
+    if name.lower() in _PARTIAL_DIRECTIVES and any("${" in a for a in args):
+        block["partial"] = True
+    key = name.lower()
+    if key == "servername" and args:
+        block["server_name"] = args[0]
+    elif key == "serveralias":
+        block["aliases"].extend(args)
+    elif key == "documentroot" and args:
+        block["document_root"] = args[0]
+    elif key == "sslengine" and args:
+        block["ssl"] = args[0].lower() == "on"
+    elif key == "sslcertificatefile" and args:
+        block["cert_file"] = args[0]
+    elif key == "assignuserid" and len(args) >= 2:
+        block["assign_user"] = (args[0], args[1])
+    elif key == "sethandler" and args:
+        match = _FPM_HANDLER.search(args[0])
+        if match:
+            block["fpm_socket"] = match.group(1)
+    elif key == "proxypass" and args:
+        if len(args) == 1:
+            path, target = location or "/", args[0]
+        else:
+            path, target = args[0], args[1]
+        if path == "/" and target != "!":
+            block["proxy_pass"] = target
+
+
+def parse_vhosts_text(text):
+    blocks, block, start, location = [], None, None, None
+    for number, line in _logical_lines(text):
+        if not line or line.startswith("#"):
+            continue
+        if block is None:
+            opened = _VHOST_OPEN.match(line)
+            if opened:
+                block, start, location = _new_block(opened.group(1)), number, None
+            continue
+        if _VHOST_CLOSE.match(line):
+            blocks.append((start, block))
+            block = None
+            continue
+        loc = _LOCATION_OPEN.match(line)
+        if loc:
+            location = loc.group(1).strip() or "/"
+            continue
+        if _LOCATION_CLOSE.match(line):
+            location = None
+            continue
+        if line.startswith("<"):
+            continue
+        name, _, rest = line.partition(" ")
+        _apply_directive(block, name, _split_args(rest.strip()), location)
+    return blocks
+
+
+def load_vhosts(runner=util.run, reader=util.read_text):
+    """Return the vhosts Apache actually loads, each with its config_file."""
+    locations = parse_ctl_s(runner(["apache2ctl", "-S"]))
+    parsed = {}
+    vhosts = []
+    for path, line in locations:
+        if path not in parsed:
+            text = reader(path) or ""
+            parsed[path] = (dict(parse_vhosts_text(text)), file_uses_macro(text))
+        blocks, uses_macro = parsed[path]
+        block = blocks.get(line)
+        if block is None:
+            continue
+        vhost = dict(block, config_file=path)
+        vhost["partial"] = block["partial"] or uses_macro
+        vhosts.append(vhost)
+    return vhosts
