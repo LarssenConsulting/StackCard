@@ -18,12 +18,12 @@ use Illuminate\Support\Collection;
  */
 class LinkDatabases
 {
-    private const LOOPBACK = ['', 'localhost', '127.0.0.1', '::1'];
+    private const LOOPBACK = ['', 'localhost', 'localhost.localdomain', '127.0.0.1', '::1', '0.0.0.0', '::'];
 
     public function __invoke(): void
     {
         $servers = Server::with(['ips', 'databases', 'dbUsers'])->get()->keyBy('id');
-        $byAddress = $this->addressIndex($servers);
+        $byAddress = $this->addressIndex($servers->where('status', Server::STATUS_ACTIVE));
 
         SiteDbRef::with('site:id,server_id')->chunkById(500, function (Collection $refs) use ($servers, $byAddress) {
             foreach ($refs as $ref) {
@@ -32,16 +32,30 @@ class LinkDatabases
         });
     }
 
+    /**
+     * Map each address to the one server that claims it. Addresses come from the
+     * agents themselves, so an address claimed by two servers is ambiguous and
+     * dropped (a compromised agent cannot hijack another server's links), and
+     * loopback names, which every machine has, never identify a server.
+     */
     private function addressIndex(Collection $servers): array
     {
-        $index = [];
+        $claims = [];
         foreach ($servers as $server) {
             foreach ($server->addresses() as $address) {
-                $index[strtolower($address)] ??= $server;
+                $address = strtolower($address);
+                if (! $this->isLoopback($address)) {
+                    $claims[$address][$server->id] = $server;
+                }
             }
         }
 
-        return $index;
+        return array_map(fn (array $owners) => reset($owners), array_filter($claims, fn (array $owners) => count($owners) === 1));
+    }
+
+    private function isLoopback(string $host): bool
+    {
+        return in_array($host, self::LOOPBACK, true) || str_starts_with($host, '127.');
     }
 
     private function link(SiteDbRef $ref, Server $source, array $byAddress): void
@@ -49,7 +63,7 @@ class LinkDatabases
         $host = $this->normalizeHost($ref->db_host);
         $sourceAddresses = array_map('strtolower', $source->addresses());
 
-        if (in_array($host, self::LOOPBACK, true) || in_array($host, $sourceAddresses, true)) {
+        if ($this->isLoopback($host) || in_array($host, $sourceAddresses, true)) {
             [$target, $resolution] = [$source, SiteDbRef::LOCAL];
         } elseif (isset($byAddress[$host])) {
             [$target, $resolution] = [$byAddress[$host], SiteDbRef::REMOTE];

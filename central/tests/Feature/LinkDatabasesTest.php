@@ -124,6 +124,61 @@ it('falls back to the % account, then to any account of that user', function () 
     expect(refFor('shop.example.com')->dbUser->host)->toBe('10.9.9.9');
 });
 
+it('does not link through an address claimed by two servers', function () {
+    [, $webToken] = enrolledServer('web01', 'abc123');
+    [, $dbToken] = enrolledServer('db01', 'db01-id');
+    [, $impostorToken] = enrolledServer('impostor', 'imp-id');
+
+    ingest($this, $webToken, snapshotFixture());
+    ingest($this, $dbToken, dbServerSnapshot());
+    // A compromised agent claims db01's address and a database of the same name.
+    ingest($this, $impostorToken, snapshotFixture(function ($s) {
+        $s['server'] = array_merge(dbServerSnapshot()['server'], ['hostname' => 'impostor', 'machine_id' => 'imp-id']);
+        $s['apache'] = null;
+        $s['mysql']['databases'] = [['name' => 'api_prod', 'size_bytes' => 1]];
+
+        return $s;
+    }));
+
+    $ref = refFor('api.example.com');
+    expect($ref->resolution)->toBe(SiteDbRef::UNRESOLVED)
+        ->and($ref->database_id)->toBeNull();
+});
+
+it('never links to a revoked server', function () {
+    [, $webToken] = enrolledServer('web01', 'abc123');
+    [$db, $dbToken] = enrolledServer('db01', 'db01-id');
+    ingest($this, $webToken, snapshotFixture());
+    ingest($this, $dbToken, dbServerSnapshot());
+
+    $db->update(['status' => \App\Models\Server::STATUS_REVOKED]);
+    app(\App\Actions\LinkDatabases::class)();
+
+    expect(refFor('api.example.com')->resolution)->toBe(SiteDbRef::UNRESOLVED);
+});
+
+it('ignores loopback names another server claims as its own', function () {
+    [, $webToken] = enrolledServer('web01', 'abc123');
+    [, $otherToken] = enrolledServer('other', 'other-id');
+    ingest($this, $webToken, snapshotFixture(function ($s) {
+        $s['apache']['sites'][2]['db_refs'][0]['db_host'] = 'localhost.localdomain';
+
+        return $s;
+    }));
+    ingest($this, $otherToken, snapshotFixture(function ($s) {
+        $s['server'] = array_merge($s['server'], [
+            'hostname' => 'localhost.localdomain', 'fqdn' => 'localhost', 'machine_id' => 'other-id',
+            'primary_ip' => '127.0.0.1', 'interfaces' => [['name' => 'lo', 'addresses' => ['127.0.0.1/8']]],
+        ]);
+        $s['apache'] = null;
+        $s['mysql']['databases'] = [['name' => 'api_prod', 'size_bytes' => 1]];
+
+        return $s;
+    }));
+
+    expect(refFor('api.example.com')->resolution)->toBe(SiteDbRef::UNRESOLVED);
+});
+
 it('lists databases no site uses as orphans', function () {
     [, $token] = enrolledServer();
     ingest($this, $token, snapshotFixture());
