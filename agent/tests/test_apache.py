@@ -158,6 +158,23 @@ class LoadVhostsTest(unittest.TestCase):
         )
         self.assertTrue(vhosts[0]["partial"])
 
+    def test_vhosts_generated_by_macros_are_reported_as_partial(self):
+        ctl = (
+            "*:80                   is a NameVirtualHost\n"
+            "         port 80 namevhost blog.example.com (macro 'VHost' (defined on line 1 of "
+            "\"/etc/apache2/conf-enabled/macros.conf\") used on line 3 of \"/etc/apache2/sites-enabled/blog.conf\":1)\n"
+            "*:443                  shop.example.com (macro 'SSLHost' (defined on line 9 of "
+            "\"/etc/apache2/conf-enabled/macros.conf\") used on line 4 of \"/etc/apache2/sites-enabled/shop.conf\":1)\n"
+        )
+        vhosts = apache.load_vhosts(runner=lambda cmd, **kw: ctl, reader=lambda path: "")
+        self.assertEqual(
+            [(v["server_name"], v["port"], v["config_file"], v["partial"]) for v in vhosts],
+            [
+                ("blog.example.com", 80, "/etc/apache2/sites-enabled/blog.conf", True),
+                ("shop.example.com", 443, "/etc/apache2/sites-enabled/shop.conf", True),
+            ],
+        )
+
     def test_parse_version(self):
         out = "Server version: Apache/2.4.58 (Ubuntu)\nServer built:   2024-10-02T12:40:51\n"
         self.assertEqual(apache.parse_version(out), "Apache/2.4.58 (Ubuntu)")

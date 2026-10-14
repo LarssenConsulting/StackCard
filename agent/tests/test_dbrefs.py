@@ -165,6 +165,16 @@ class FindDbRefsTest(unittest.TestCase):
         self.assertFalse(worker.is_alive(), "find_db_refs blocked on a FIFO")
         self.assertEqual(result, [[]])
 
+    def test_symlink_to_a_device_is_never_opened(self):
+        from unittest import mock
+        from discover_agent import util
+
+        os.makedirs(os.path.join(self.root, "dev"))
+        os.symlink("/dev/null", os.path.join(self.root, "dev/.env"))
+        with mock.patch.object(util.os, "open", wraps=util.os.open) as opened:
+            self.assertEqual(dbrefs.find_db_refs(os.path.join(self.root, "dev")), [])
+        opened.assert_not_called()
+
     def test_oversized_config_file_is_skipped(self):
         self.write("big/.env", "DB_DATABASE=big\nDB_USERNAME=u\n" + "#" * (2 * 1024 * 1024))
         self.assertEqual(dbrefs.find_db_refs(os.path.join(self.root, "big")), [])

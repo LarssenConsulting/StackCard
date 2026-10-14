@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from discover_agent import util
 
@@ -29,6 +29,19 @@ class SiteContext:
     cert_expiry: Callable
 
 
+def normalize_socket(path):
+    """/var/run is a symlink to /run on Ubuntu: configs use both spellings."""
+    return "/run/" + path[len("/var/run/"):] if path.startswith("/var/run/") else path
+
+
+def strip_userinfo(url):
+    """Drop user:password@ from a URL: credentials never leave the server."""
+    parts = urlsplit(url)
+    if "@" not in parts.netloc:
+        return url
+    return urlunsplit(parts._replace(netloc=parts.netloc.rpartition("@")[2]))
+
+
 def parse_fpm_pools(files):
     """files: {path: text} -> {listen address: {user, group, php_version}}"""
     pools = {}
@@ -40,7 +53,7 @@ def parse_fpm_pools(files):
         def flush():
             listen = values.get("listen")
             if name and listen:
-                pools[listen.replace("$pool", name)] = {
+                pools[normalize_socket(listen.replace("$pool", name))] = {
                     "user": values.get("user"),
                     "group": values.get("group"),
                     "php_version": version,
@@ -115,7 +128,7 @@ def classify(vhost, ctx):
         site["cert_expires_at"] = ctx.cert_expiry(vhost["cert_file"])
 
     if vhost["proxy_pass"]:
-        site["upstream"] = vhost["proxy_pass"]
+        site["upstream"] = strip_userinfo(vhost["proxy_pass"])
         target = urlsplit(vhost["proxy_pass"])
         if target.scheme in ("http", "https") and target.hostname in LOCAL_HOSTS and target.port:
             site["type"] = "node"
@@ -130,7 +143,7 @@ def classify(vhost, ctx):
     elif vhost["fpm_socket"]:
         site["type"] = "php-fpm"
         site["app_dir"] = vhost["document_root"]
-        pool = ctx.fpm_pools.get(vhost["fpm_socket"])
+        pool = ctx.fpm_pools.get(normalize_socket(vhost["fpm_socket"]))
         if pool:
             site["system_user"], site["system_group"] = pool["user"], pool["group"]
             site["php_version"] = pool["php_version"]

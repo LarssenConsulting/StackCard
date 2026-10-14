@@ -89,6 +89,19 @@ class ClassifyTest(unittest.TestCase):
         self.assertTrue(site["https"])
         self.assertEqual(site["cert_expires_at"], "2027-01-01T00:00:00Z")
 
+    def test_php_fpm_socket_under_var_run_matches_pool_under_run(self):
+        site = sites.classify(
+            vhost(document_root="/var/www/shop/public", fpm_socket="/var/run/php/php8.3-fpm-shop.sock"),
+            context(),
+        )
+        self.assertEqual((site["system_user"], site["php_version"]), ("shop", "8.3"))
+
+    def test_proxy_credentials_are_never_reported(self):
+        site = sites.classify(vhost(proxy_pass="http://admin:s3cret@10.0.0.20:8080/app"), context())
+        self.assertEqual(site["upstream"], "http://10.0.0.20:8080/app")
+        site = sites.classify(vhost(proxy_pass="http://admin:s3cret@127.0.0.1:3000/"), context())
+        self.assertEqual((site["type"], site["upstream"]), ("node", "http://127.0.0.1:3000/"))
+
     def test_php_fpm_with_unknown_socket_keeps_type_without_user(self):
         site = sites.classify(vhost(document_root="/x", fpm_socket="/run/php/missing.sock"), context())
         self.assertEqual(site["type"], "php-fpm")

@@ -46,6 +46,15 @@ class BuildSnapshotTest(unittest.TestCase):
         )
 
 
+    def test_failed_server_collector_still_sends_a_minimal_identity(self):
+        import socket
+
+        snap = snapshot.build_snapshot({"server": crash, "apache": lambda: None, "mysql": lambda: None})
+        self.assertEqual(snap["server"]["hostname"], socket.gethostname())
+        self.assertEqual(snap["server"]["interfaces"], [])
+        self.assertEqual(snap["errors"][0]["collector"], "server")
+
+
 class CollectApacheTest(unittest.TestCase):
     def test_none_when_apache_is_not_installed(self):
         self.assertIsNone(snapshot.collect_apache(errors=[], has_apache=lambda: False))

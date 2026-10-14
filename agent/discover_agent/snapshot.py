@@ -1,5 +1,7 @@
 """Assemble collector results into one snapshot; one failing collector never stops the others."""
 
+import socket
+
 from discover_agent import __version__, util
 from discover_agent.collectors import apache, dbrefs, mysql, server, sites
 
@@ -42,6 +44,14 @@ def collect_apache(
     return {"version": version, "sites": collected}
 
 
+def _minimal_server():
+    """The central needs an identity: without it the whole snapshot would be refused."""
+    return {
+        "hostname": socket.gethostname(), "fqdn": None, "machine_id": None, "primary_ip": None,
+        "os": None, "kernel": None, "virtualization": None, "interfaces": [],
+    }
+
+
 def default_collectors(errors):
     return {
         "server": server.collect_server,
@@ -62,7 +72,7 @@ def build_snapshot(collectors=None):
         try:
             snap[name] = collect()
         except Exception as exc:
-            snap[name] = None
+            snap[name] = _minimal_server() if name == "server" else None
             errors.append({"collector": name, "message": _describe(exc)})
     snap["errors"] = errors
     return snap

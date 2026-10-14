@@ -11,6 +11,8 @@ ExecStart=/usr/bin/discover-agent run
 ProtectSystem=full
 ReadWritePaths=/var/lib/discover-agent
 PrivateTmp=yes
+# Site files are user-controlled: a symlink to a real device must lead nowhere.
+PrivateDevices=yes
 NoNewPrivileges=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
