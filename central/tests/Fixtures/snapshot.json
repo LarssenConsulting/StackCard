@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-10-14T12:00:00Z",
+  "agent_version": "0.1.0",
+  "server": {
+    "hostname": "web01",
+    "fqdn": "web01.example.lan",
+    "machine_id": "abc123",
+    "primary_ip": "10.0.0.11",
+    "os": "Ubuntu 24.04.1 LTS",
+    "kernel": "6.8.0-45-generic",
+    "virtualization": "kvm",
+    "interfaces": [
+      {"name": "eth0", "addresses": ["10.0.0.11/24", "2001:db8::11/64"]}
+    ]
+  },
+  "apache": {
+    "version": "Apache/2.4.58 (Ubuntu)",
+    "sites": [
+      {
+        "server_name": "shop.example.com", "aliases": ["www.shop.example.com"], "port": 80,
+        "https": false, "cert_expires_at": null, "type": "static", "document_root": null,
+        "app_dir": null, "upstream": null, "php_version": null, "system_user": null,
+        "system_group": null, "owner_user": null, "owner_group": null, "process_manager": null,
+        "config_file": "/etc/apache2/sites-enabled/shop.conf", "partial": false, "db_refs": []
+      },
+      {
+        "server_name": "shop.example.com", "aliases": ["www.shop.example.com"], "port": 443,
+        "https": true, "cert_expires_at": "2027-01-01T00:00:00Z", "type": "php-fpm",
+        "document_root": "/var/www/shop/public", "app_dir": "/var/www/shop/public", "upstream": null,
+        "php_version": "8.3", "system_user": "shop", "system_group": "shop", "owner_user": "shop",
+        "owner_group": "www-data", "process_manager": null,
+        "config_file": "/etc/apache2/sites-enabled/shop.conf", "partial": false,
+        "db_refs": [
+          {"db_name": "shop_prod", "db_user": "shop", "db_host": "localhost", "source": "/var/www/shop/.env"}
+        ]
+      },
+      {
+        "server_name": "api.example.com", "aliases": [], "port": 443, "https": true,
+        "cert_expires_at": "2026-10-20T00:00:00Z", "type": "node", "document_root": null,
+        "app_dir": "/srv/api", "upstream": "http://127.0.0.1:3000/", "php_version": null,
+        "system_user": "app-api", "system_group": "app-api", "owner_user": "app-api",
+        "owner_group": "app-api", "process_manager": "systemd:api.service",
+        "config_file": "/etc/apache2/sites-enabled/api.conf", "partial": false,
+        "db_refs": [
+          {"db_name": "api_prod", "db_user": "api", "db_host": "10.0.0.20", "source": "/srv/api/.env"}
+        ]
+      }
+    ]
+  },
+  "mysql": {
+    "version": "10.11.8-MariaDB",
+    "databases": [
+      {"name": "shop_prod", "size_bytes": 1048576},
+      {"name": "orphan_db", "size_bytes": 0}
+    ],
+    "users": [
+      {"user": "shop", "host": "localhost"},
+      {"user": "shop", "host": "%"},
+      {"user": "root", "host": "localhost"}
+    ],
+    "grants": [
+      {"user": "shop", "host": "localhost", "database": "shop_prod", "privileges": ["SELECT", "INSERT"], "global": false},
+      {"user": "root", "host": "localhost", "database": null, "privileges": ["ALL PRIVILEGES"], "global": true}
+    ]
+  },
+  "errors": [
+    {"collector": "apache", "message": "legacy.example.com: ValueError: weird vhost"}
+  ]
+}

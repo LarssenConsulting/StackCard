@@ -44,7 +44,20 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/** The reference agent snapshot (schema v1), optionally altered by $change. */
+function snapshotFixture(?callable $change = null): array
 {
-    // ..
+    $snapshot = json_decode(file_get_contents(__DIR__.'/Fixtures/snapshot.json'), true);
+
+    return $change ? $change($snapshot) : $snapshot;
+}
+
+/** An enrolled server and the plain bearer token its agent would hold. */
+function enrolledServer(string $name = 'web01', string $machineId = 'abc123'): array
+{
+    $server = \App\Models\Server::create([
+        'name' => $name, 'machine_id' => $machineId, 'status' => \App\Models\Server::STATUS_ACTIVE,
+    ]);
+
+    return [$server, $server->createToken('agent', [\App\Models\Server::AGENT_ABILITY])->plainTextToken];
 }
