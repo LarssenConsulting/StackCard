@@ -41,20 +41,43 @@ def read_text(path):
         return None
 
 
+_READ_FLAGS = os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOCTTY", 0)
+
+
+def _open_checked(path, limit):
+    """Return a read descriptor on `path` only if it is a regular file under `limit`."""
+    o_path = getattr(os, "O_PATH", None)
+    if o_path is not None:
+        # Linux: an O_PATH descriptor never runs a device's open(). The type is
+        # checked on that descriptor and the very same inode is then reopened
+        # through /proc, so a symlink swapped in between changes nothing.
+        handle = os.open(path, o_path)
+        try:
+            st = os.fstat(handle)
+            if not stat.S_ISREG(st.st_mode) or st.st_size > limit:
+                return None
+            return os.open(f"/proc/self/fd/{handle}", _READ_FLAGS)
+        finally:
+            os.close(handle)
+    # Elsewhere (developer machines only): best effort, checked again after opening.
+    if not stat.S_ISREG(os.stat(path).st_mode):
+        return None
+    return os.open(path, _READ_FLAGS)
+
+
 def read_regular_file(path, limit=1024 * 1024):
     """Read a file a non-root user may control: regular files under `limit` only.
 
-    The type is checked before opening, so a symlink to a device is never
-    opened by root (opening some devices has side effects), and again on the
-    opened descriptor, so a file swapped in between cannot slip past either.
-    O_NONBLOCK keeps a FIFO from hanging the agent. Symlinks to regular files
-    are followed on purpose: deploy tools link .env to a shared copy.
+    Root never opens a device or FIFO a site owner points a symlink at (opening
+    some devices has side effects; O_NONBLOCK keeps a FIFO from hanging the
+    agent). Symlinks to regular files are followed on purpose: deploy tools
+    link .env to a shared copy.
     """
     try:
-        if not stat.S_ISREG(os.stat(path).st_mode):
-            return None
-        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOCTTY", 0))
+        fd = _open_checked(path, limit)
     except OSError:
+        return None
+    if fd is None:
         return None
     try:
         st = os.fstat(fd)

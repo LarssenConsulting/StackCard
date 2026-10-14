@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit
 
 from discover_agent import util
 
@@ -35,11 +35,16 @@ def normalize_socket(path):
 
 
 def strip_userinfo(url):
-    """Drop user:password@ from a URL: credentials never leave the server."""
-    parts = urlsplit(url)
-    if "@" not in parts.netloc:
+    """Drop user:password@ from a URL: credentials never leave the server.
+
+    Cut at the last '@' rather than trusting urlsplit, which ends the authority
+    at the first '/', '?' or '#' of an unencoded password and would keep the
+    rest of it. Losing an '@' in a proxy path is the price of never leaking.
+    """
+    scheme, sep, rest = url.partition("://")
+    if not sep or "@" not in rest:
         return url
-    return urlunsplit(parts._replace(netloc=parts.netloc.rpartition("@")[2]))
+    return f"{scheme}://{rest.rpartition('@')[2]}"
 
 
 def parse_fpm_pools(files):
@@ -129,7 +134,7 @@ def classify(vhost, ctx):
 
     if vhost["proxy_pass"]:
         site["upstream"] = strip_userinfo(vhost["proxy_pass"])
-        target = urlsplit(vhost["proxy_pass"])
+        target = urlsplit(site["upstream"])
         if target.scheme in ("http", "https") and target.hostname in LOCAL_HOSTS and target.port:
             site["type"] = "node"
             pid = ctx.listeners.get(target.port)

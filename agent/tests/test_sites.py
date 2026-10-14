@@ -102,6 +102,13 @@ class ClassifyTest(unittest.TestCase):
         site = sites.classify(vhost(proxy_pass="http://admin:s3cret@127.0.0.1:3000/"), context())
         self.assertEqual((site["type"], site["upstream"]), ("node", "http://127.0.0.1:3000/"))
 
+    def test_proxy_password_with_url_delimiters_is_never_reported(self):
+        for password in ("pa/ss", "pa?ss", "pa#ss", "p/a@ss"):
+            url = f"http://admin:{password}@127.0.0.1:3000/app"
+            site = sites.classify(vhost(proxy_pass=url), context())
+            self.assertEqual((site["type"], site["upstream"]), ("node", "http://127.0.0.1:3000/app"), url)
+            self.assertNotIn(password, repr(site))
+
     def test_php_fpm_with_unknown_socket_keeps_type_without_user(self):
         site = sites.classify(vhost(document_root="/x", fpm_socket="/run/php/missing.sock"), context())
         self.assertEqual(site["type"], "php-fpm")
