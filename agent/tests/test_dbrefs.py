@@ -52,6 +52,26 @@ class ParsersTest(unittest.TestCase):
         for key in ("DB_PASSWORD", "APP_KEY"):
             self.assertNotIn(key, env)
 
+    def test_multiline_quoted_value_lines_are_not_parsed_as_keys(self):
+        text = (
+            'DB_DATABASE=shop\n'
+            'DB_USERNAME=shop\n'
+            'DB_PASSWORD="first-line\n'
+            'DB_USERNAME=leaked-s3cret\n'
+            'last-line"\n'
+            "PRIVATE_KEY='-----BEGIN\n"
+            "DB_HOST=leaked-host\n"
+            "-----END'\n"
+            'APP_NAME="multi\n'
+            'DB_DATABASE=leaked_db\n'
+            'end"\n'
+        )
+        env = dbrefs.parse_env(text)
+        self.assertEqual(env["DB_USERNAME"], "shop")
+        self.assertEqual(env["DB_DATABASE"], "shop")
+        self.assertNotIn("DB_HOST", env)
+        self.assertNotIn("leaked", json.dumps(env))
+
     def test_refs_from_laravel_env(self):
         self.assertEqual(
             dbrefs.refs_from_env(dbrefs.parse_env(LARAVEL_ENV)),

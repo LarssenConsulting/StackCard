@@ -42,16 +42,41 @@ def _env_value(raw):
     return re.split(r"\s+#", raw, maxsplit=1)[0].strip()
 
 
+def _closes(text, quote):
+    """True if `text` contains an unescaped closing `quote`."""
+    escaped = False
+    for char in text:
+        if escaped:
+            escaped = False
+        elif char == "\\" and quote == '"':
+            escaped = True
+        elif char == quote:
+            return True
+    return False
+
+
 def parse_env(text):
+    """Parse a dotenv file the way dotenv does, including multi-line quoted values.
+
+    Lines inside a quoted value (a PEM key, a multi-line password) are part of
+    that value and must never be read as KEY=VALUE assignments of their own.
+    """
     env = {}
-    for line in text.splitlines():
+    lines = iter(text.splitlines())
+    for line in lines:
         match = _ENV_LINE.match(line.strip())
         if not match:
             continue
-        key = match.group(1)
+        key, raw = match.group(1), match.group(2).strip()
+        quote = raw[:1]
+        if quote in ("'", '"') and not _closes(raw[1:], quote):
+            for continuation in lines:
+                raw += "\n" + continuation
+                if _closes(continuation, quote):
+                    break
         if any(marker in key.upper() for marker in SENSITIVE_MARKERS):
             continue
-        env[key] = _env_value(match.group(2))
+        env[key] = _env_value(raw)
     return env
 
 
