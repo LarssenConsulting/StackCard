@@ -37,7 +37,9 @@ return [
     |
     */
 
-    'guard' => ['web'],
+    // Only agent bearer tokens authenticate the API: an admin's web session
+    // must never be mistaken for a server.
+    'guard' => [],
 
     /*
     |--------------------------------------------------------------------------
