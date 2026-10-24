@@ -5,6 +5,7 @@ use App\Filament\Resources\Databases\Pages\ViewDatabase;
 use App\Filament\Resources\Servers\Pages\CreateServer;
 use App\Filament\Resources\Servers\Pages\ListServers;
 use App\Filament\Resources\Servers\Pages\ViewServer;
+use App\Filament\Resources\Servers\RelationManagers\DatabasesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SitesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SnapshotsRelationManager;
 use App\Filament\Resources\Sites\Pages\ListSites;
@@ -18,6 +19,7 @@ use App\Models\Database;
 use App\Models\EnrollmentToken;
 use App\Models\Server;
 use App\Models\Site;
+use App\Models\SiteDbRef;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Notifications\NotificationMailbox;
@@ -67,6 +69,9 @@ it('lists a server sites and snapshots in its tabs', function () {
         ->assertCanSeeTableRecords($this->web->sites);
     Livewire::test(SnapshotsRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
         ->assertCanSeeTableRecords($this->web->snapshots);
+    Livewire::test(DatabasesRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
+        ->assertCanSeeTableRecords($this->web->databases)
+        ->assertTableColumnStateSet('linked_sites_count', 1, Database::where('name', 'shop_prod')->sole());
 });
 
 it('generates an enrollment token and shows the install command once', function () {
@@ -133,7 +138,25 @@ it('shows which sites use a database', function () {
     $database = Database::where('name', 'shop_prod')->sole();
 
     Livewire::test(ViewDatabase::class, ['record' => $database->getRouteKey()])
-        ->assertSee('shop.example.com');
+        ->assertSee('shop.example.com')
+        ->assertSee('/var/www/shop/.env');
+});
+
+it('counts and shows a site served on two ports once', function () {
+    // The HTTP and HTTPS vhosts of shop.example.com read the same .env.
+    $https = SiteDbRef::whereHas('site', fn ($query) => $query->where('server_name', 'shop.example.com'))->sole();
+    $http = Site::where('server_name', 'shop.example.com')->where('port', 80)->sole();
+    SiteDbRef::create(['site_id' => $http->id] + $https->only([
+        'db_name', 'db_user', 'db_host', 'source', 'database_id', 'db_user_id', 'resolution',
+    ]));
+    $database = Database::where('name', 'shop_prod')->sole();
+
+    expect($database->linkedSiteRefs())->toHaveCount(1)
+        ->and($database->linkedSiteRefs()->first()->ports)->toBe('80, 443');
+    Livewire::test(ListDatabases::class)
+        ->assertTableColumnStateSet('linked_sites_count', 1, $database);
+    Livewire::test(ViewDatabase::class, ['record' => $database->getRouteKey()])
+        ->assertSee('80, 443');
 });
 
 it('summarises the inventory on the dashboard', function () {

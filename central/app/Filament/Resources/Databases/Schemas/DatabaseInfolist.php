@@ -33,18 +33,25 @@ class DatabaseInfolist
                     ]),
                 RepeatableEntry::make('siteDbRefs')
                     ->label('Sites qui l’utilisent')
-                    ->columns(4)
-                    ->placeholder('Aucun site inventorié n’utilise cette base.')
+                    ->state(fn (Database $record) => $record->linkedSiteRefs())
+                    ->columns(3)
+                    ->placeholder('Aucun site inventorié n’utilise cette base. Seuls les wp-config.php '
+                        .'et .env (.env.local, .env.production) des sites sont lus : une autre application '
+                        .'n’apparaît pas ici.')
                     ->schema([
                         TextEntry::make('site.server_name')
                             ->label('Site')
                             ->url(fn (SiteDbRef $record) => SiteResource::getUrl('view', ['record' => $record->site_id])),
+                        TextEntry::make('ports')->label('Ports'),
                         TextEntry::make('site.server.name')->label('Hébergé sur'),
-                        TextEntry::make('db_user')->label('Compte utilisé')->placeholder('—'),
+                        TextEntry::make('db_user')
+                            ->label('Compte utilisé')
+                            ->placeholder('Non indiqué dans la configuration'),
                         TextEntry::make('resolution')
                             ->label('Emplacement')
                             ->badge()
                             ->formatStateUsing(fn (string $state) => SiteInfolist::RESOLUTIONS[$state] ?? $state),
+                        TextEntry::make('source')->label('Lu dans'),
                     ]),
                 RepeatableEntry::make('grants')
                     ->label('Comptes ayant des droits')

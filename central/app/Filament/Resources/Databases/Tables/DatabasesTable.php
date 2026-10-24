@@ -16,6 +16,7 @@ class DatabasesTable
     public static function configure(Table $table, bool $withServer = true): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->withLinkedSitesCount())
             ->defaultSort('name')
             ->columns(array_values(array_filter([
                 TextColumn::make('name')->label('Base')->searchable()->sortable(),
@@ -24,9 +25,9 @@ class DatabasesTable
                     ->label('Taille')
                     ->formatStateUsing(fn (int $state) => Number::fileSize($state, precision: 1))
                     ->sortable(),
-                TextColumn::make('site_db_refs_count')
+                TextColumn::make('linked_sites_count')
                     ->label('Sites liés')
-                    ->counts('siteDbRefs')
+                    ->tooltip('Sites dont le wp-config.php ou le .env désigne cette base')
                     ->badge()
                     ->color(fn (int $state) => $state === 0 ? 'warning' : 'success'),
             ])))
