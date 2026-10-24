@@ -1,1 +1,4 @@
 .DS_Store
+
+# Certificats locaux (MAMP PRO) — contiennent une clé privée
+_ssl/

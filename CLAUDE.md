@@ -52,6 +52,12 @@ Security invariants (each has tests; keep them):
 - Table `db_databases` (model `Database`): `databases` is reserved in MySQL.
 - Filament: resources in `app/Filament/Resources/{Servers,Sites,Databases}` (Sites and Databases are read-only), dashboard widgets in `app/Filament/Widgets`. Enrollment tokens are shown once in a notification.
 
+## SQL release scripts (`_release/`)
+
+Every schema change (new Laravel migration) also gets a SQL file in `_release/` named `YYYY-MM-DD_NNN.sql` (NNN restarts at `001` each day and increments for the same date). It holds the DDL from `php artisan migrate --pretend` plus the matching `INSERT INTO migrations` row. `2026-10-24_001.sql` is the full initial schema. See `_release/README.md`.
+
+Local dev runs on MAMP PRO: `https://scanner.larssen-homelab.test` (document root `central/public`), MySQL 8.0 database `scanner` on 127.0.0.1:3306 (not `localhost`: Homebrew PHP would look for a non-existent socket). Tests still use SQLite in memory.
+
 ## Testing gotchas (central)
 
 - Pest feature tests use `RefreshDatabase` (see `tests/Pest.php`, which also provides `snapshotFixture()` and `enrolledServer()`).
