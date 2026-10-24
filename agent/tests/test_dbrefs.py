@@ -173,7 +173,10 @@ class FindDbRefsTest(unittest.TestCase):
         os.symlink("/dev/null", os.path.join(self.root, "dev/.env"))
         with mock.patch.object(util.os, "open", wraps=util.os.open) as opened:
             self.assertEqual(dbrefs.find_db_refs(os.path.join(self.root, "dev")), [])
-        opened.assert_not_called()
+        # Linux checks the type on an O_PATH descriptor, which never runs a device's open().
+        o_path = getattr(os, "O_PATH", 0)
+        read_opens = [c for c in opened.call_args_list if not c.args[1] & o_path]
+        self.assertEqual(read_opens, [])
 
     def test_oversized_config_file_is_skipped(self):
         self.write("big/.env", "DB_DATABASE=big\nDB_USERNAME=u\n" + "#" * (2 * 1024 * 1024))
