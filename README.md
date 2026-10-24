@@ -35,6 +35,7 @@ discover-agent (Python, root, lecture seule) ─HTTPS─▶ Laravel + Filament +
 ```bash
 cd agent && python3 -m unittest            # tests de l'agent (aucune dépendance)
 python3 agent/packaging/build_deb.py       # construit agent/dist/discover-agent_<version>_all.deb
+python3 agent/packaging/build_release.py   # fichiers d'une release (install.sh + .deb), publiés par la CI sur un tag agent-v<version>
 sh agent/integration/run.sh                # test d'intégration Ubuntu 24.04 (Docker requis)
 
 cd central && composer install && cp .env.example .env && php artisan key:generate

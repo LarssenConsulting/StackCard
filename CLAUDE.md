@@ -15,6 +15,7 @@ Discover inventories Ubuntu 24.04 servers (name, IPs, Apache sites, MySQL databa
 python3 -m unittest                                   # all tests
 python3 -m unittest tests.test_apache.VhostTest.test_https_php_fpm_block   # one test
 python3 packaging/build_deb.py                        # -> agent/dist/discover-agent_<ver>_all.deb (pure Python, no dpkg needed)
+python3 packaging/build_release.py                    # -> agent/dist/release/agent/ (install.sh, latest .deb + .sha256); CI publishes it as a GitHub release on tag agent-v<version>
 sh integration/run.sh                                 # Ubuntu 24.04 end-to-end check, needs Docker
 
 # Central (run from central/)

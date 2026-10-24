@@ -28,18 +28,19 @@ class ViewServer extends ViewRecord
                 ->requiresConfirmation()
                 ->action(function (Server $record, CreateEnrollmentToken $createToken) {
                     $plain = $createToken($record);
-                    $command = sprintf(
-                        'sudo discover-agent enroll --url %s --token %s',
-                        e(rtrim(config('app.url'), '/')),
-                        e($plain),
-                    );
+                    $url = rtrim(config('app.url'), '/');
+                    $code = fn (string $text) => '<code style="user-select:all">'.e($text).'</code>';
 
                     // Shown once: only the hash is stored.
                     Notification::make()
                         ->title('Jeton d’enrôlement créé')
                         ->body(new HtmlString(
-                            'Lancez sur le serveur (ce jeton ne sera plus affiché) :<br><code style="user-select:all">'
-                            .$command.'</code>'
+                            'Sur le serveur, lancez la commande puis répondez aux deux questions '
+                            .'(ce jeton ne sera plus affiché) :<br>'
+                            .$code('curl -fsSL '.config('discover.agent_install_url').' | sudo sh').'<br>'
+                            .'Adresse du central : '.$code(preg_replace('#^https://#', '', $url)).'<br>'
+                            .'Jeton : '.$code($plain).'<br><br>'
+                            .'Agent déjà installé : '.$code("sudo discover-agent enroll --url {$url} --token {$plain}")
                         ))
                         ->success()
                         ->persistent()

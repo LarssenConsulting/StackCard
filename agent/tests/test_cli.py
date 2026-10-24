@@ -81,6 +81,27 @@ class CliTest(unittest.TestCase):
         self.assertIn("410", err)
         self.assertFalse(os.path.exists(os.path.join(self.paths.etc_dir, "credentials")))
 
+    def test_enroll_reads_the_token_from_stdin(self):
+        self.post.side_effect = [(201, {"server_id": 7, "token": "7|secret-token"}), (200, {"status": "ok"})]
+        with mock.patch("sys.stdin", io.StringIO("enroll-tok\n")):
+            code, _, _ = self.run_cli("enroll", "--url", "https://c.example.com", "--token", "-")
+        self.assertEqual(code, 0)
+        self.assertEqual(self.post.call_args_list[0].args[1]["enrollment_token"], "enroll-tok")
+
+    def test_enroll_refuses_an_empty_token_from_stdin(self):
+        with mock.patch("sys.stdin", io.StringIO("\n")):
+            code, _, err = self.run_cli("enroll", "--url", "https://c.example.com", "--token", "-")
+        self.assertEqual(code, 1)
+        self.assertIn("jeton", err)
+        self.post.assert_not_called()
+
+    def test_enroll_keeps_credentials_when_only_the_first_inventory_fails(self):
+        self.post.side_effect = [(201, {"server_id": 7, "token": "7|secret-token"}), (500, {"message": "boom"})]
+        code, _, err = self.run_cli("enroll", "--url", "https://c.example.com", "--token", "t")
+        self.assertEqual(code, cli.EXIT_ENROLLED_SEND_FAILED)
+        self.assertEqual(config.load(self.paths).token, "7|secret-token")
+        self.assertIn("500", err)
+
     def test_enroll_refuses_plain_http(self):
         code, _, err = self.run_cli("enroll", "--url", "http://c.example.com", "--token", "t")
         self.assertEqual(code, 1)

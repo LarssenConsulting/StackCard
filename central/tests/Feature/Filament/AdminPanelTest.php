@@ -20,6 +20,7 @@ use App\Models\Server;
 use App\Models\Site;
 use App\Models\User;
 use Filament\Facades\Filament;
+use Filament\Notifications\NotificationMailbox;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -68,12 +69,23 @@ it('lists a server sites and snapshots in its tabs', function () {
         ->assertCanSeeTableRecords($this->web->snapshots);
 });
 
-it('generates an enrollment token and shows the command once', function () {
+it('generates an enrollment token and shows the install command once', function () {
+    config([
+        'app.url' => 'https://sentinel.example.fr/',
+        'discover.agent_install_url' => 'https://downloads.example.fr/agent/install.sh',
+    ]);
+
     Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])
-        ->callAction('generateEnrollmentToken')
-        ->assertNotified();
+        ->callAction('generateEnrollmentToken');
 
     expect(EnrollmentToken::where('server_id', $this->web->id)->whereNull('used_at')->count())->toBe(1);
+    $mailbox = app(NotificationMailbox::class);
+    $mailbox->flush();
+    $body = (string) collect($mailbox->pull())->last()['body'];
+    expect($body)
+        ->toContain('curl -fsSL https://downloads.example.fr/agent/install.sh | sudo sh')
+        ->toContain('<code style="user-select:all">sentinel.example.fr</code>')
+        ->toContain('sudo discover-agent enroll --url https://sentinel.example.fr --token ');
 });
 
 it('revokes a server', function () {

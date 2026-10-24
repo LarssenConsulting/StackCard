@@ -10,6 +10,8 @@ from discover_agent import __version__, config, snapshot, transport, util
 ENROLL_PATH = "/api/v1/enroll"
 INVENTORY_PATH = "/api/v1/inventory"
 TIMER = "discover-agent.timer"
+# Enrolled (the token is used up) but the first inventory was not delivered: the timer retries it.
+EXIT_ENROLLED_SEND_FAILED = 3
 
 
 def identity():
@@ -39,10 +41,15 @@ def cmd_enroll(args, paths):
     if not url.startswith("https://"):
         _error("L'URL du central doit commencer par https://")
         return 1
+    # "-" keeps the token out of the process list and the shell history (install.sh).
+    token = sys.stdin.readline().strip() if args.token == "-" else args.token
+    if not token:
+        _error("Aucun jeton d'enrôlement fourni.")
+        return 1
     try:
         status, body = transport.post_json(
             url + ENROLL_PATH,
-            {"enrollment_token": args.token, **identity()},
+            {"enrollment_token": token, **identity()},
             ca_file=args.ca_file,
             pin_sha256=args.pin_sha256,
         )
@@ -56,7 +63,7 @@ def cmd_enroll(args, paths):
     config.save(paths, cfg)
     print(f"Serveur enrôlé (id {body.get('server_id')}).")
     enable_timer()
-    return send_inventory(cfg, paths)
+    return EXIT_ENROLLED_SEND_FAILED if send_inventory(cfg, paths) else 0
 
 
 def send_inventory(cfg, paths):
@@ -128,7 +135,7 @@ def build_parser():
 
     enroll = commands.add_parser("enroll", help="Enrôler ce serveur auprès du central")
     enroll.add_argument("--url", required=True)
-    enroll.add_argument("--token", required=True)
+    enroll.add_argument("--token", required=True, help="jeton d'enrôlement, ou - pour le lire sur l'entrée standard")
     enroll.add_argument("--ca-file")
     enroll.add_argument("--pin-sha256")
     enroll.set_defaults(handler=cmd_enroll)

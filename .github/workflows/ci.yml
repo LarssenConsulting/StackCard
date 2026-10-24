@@ -1,0 +1,68 @@
+# Tests on every push and pull request. Pushing a tag agent-v<version> (equal to
+# agent/discover_agent/__init__.py) also publishes the agent as the latest GitHub release,
+# which install.sh downloads from releases/latest/download/.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["agent-v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  agent:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m unittest
+
+  central:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: central
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_sqlite, intl
+          coverage: none
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: cp .env.example .env && php artisan key:generate
+      - run: ./vendor/bin/pest < /dev/null
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/agent-v')
+    needs: [agent, central]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check the tag matches the agent version
+        run: |
+          version=$(cd agent && python3 -c 'from discover_agent import __version__; print(__version__)')
+          if [ "$GITHUB_REF_NAME" != "agent-v$version" ]; then
+            echo "Le tag $GITHUB_REF_NAME ne correspond pas à la version de l'agent ($version)." >&2
+            exit 1
+          fi
+      - run: python3 agent/packaging/build_release.py
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" agent/dist/release/agent/* \
+            --title "Agent ${GITHUB_REF_NAME#agent-v}" --generate-notes --latest

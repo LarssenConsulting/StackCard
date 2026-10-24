@@ -49,7 +49,10 @@ DB_USERNAME=discover_app
 DB_PASSWORD=<mot de passe fort>
 ```
 
-`APP_URL` sert aussi à construire la commande `discover-agent enroll` affichée dans l'interface.
+`APP_URL` sert aussi à construire l'adresse du central et la commande `discover-agent enroll`
+affichées avec chaque jeton d'enrôlement. Le script d'installation de l'agent est pris par défaut dans la
+dernière release GitHub (`https://github.com/LarssenConsulting/StackCard/releases/latest/download/install.sh`) ;
+pour un autre emplacement, ajoutez `DISCOVER_AGENT_INSTALL_URL=https://…/install.sh` (voir `install-agent.md`).
 
 ```bash
 php artisan migrate --force
