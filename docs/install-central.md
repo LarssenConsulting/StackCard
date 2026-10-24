@@ -8,11 +8,14 @@ peut être hébergé sur l'un des serveurs inventoriés (qui aura alors aussi so
 
 ## 1. Prérequis
 
+Les dépendances (Symfony 8) exigent **PHP ≥ 8.4.1** ; Ubuntu 24.04 ne fournit que la 8.3, d'où le
+dépôt `ppa:ondrej/php`.
+
 ```bash
-sudo apt install apache2 mariadb-server git unzip \
-  php8.3-fpm php8.3-cli php8.3-mysql php8.3-xml php8.3-mbstring php8.3-curl \
-  php8.3-zip php8.3-intl php8.3-bcmath
-# Composer : https://getcomposer.org/download/
+sudo add-apt-repository ppa:ondrej/php && sudo apt update
+sudo apt install apache2 mariadb-server git unzip composer \
+  php8.4-fpm php8.4-cli php8.4-mysql php8.4-xml php8.4-mbstring php8.4-curl \
+  php8.4-zip php8.4-intl php8.4-bcmath php8.4-sqlite3
 ```
 
 ## 2. Base de données
@@ -26,7 +29,8 @@ GRANT ALL PRIVILEGES ON discover.* TO 'discover_app'@'localhost';
 ## 3. Code et configuration
 
 ```bash
-sudo git clone <dépôt> /var/www/discover
+sudo git clone https://github.com/LarssenConsulting/StackCard.git /var/www/discover
+sudo chown -R $USER /var/www/discover
 cd /var/www/discover/central
 composer install --no-dev --optimize-autoloader
 cp .env.example .env
@@ -82,7 +86,7 @@ Utilisez Let's Encrypt (central joignable publiquement) ou une autorité de cert
         Require all granted
     </Directory>
     <FilesMatch \.php$>
-        SetHandler "proxy:unix:/run/php/php8.3-fpm.sock|fcgi://localhost"
+        SetHandler "proxy:unix:/run/php/php8.4-fpm.sock|fcgi://localhost"
     </FilesMatch>
 
     # L'API refuse aussi les inventaires de plus de 5 Mo.
