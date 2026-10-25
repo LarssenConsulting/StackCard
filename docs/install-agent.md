@@ -14,8 +14,8 @@ les agents à mettre à jour). Pour publier :
 
 ```bash
 # 1. augmenter __version__ dans agent/discover_agent/__init__.py, commiter, pousser
-git tag agent-v0.2.0          # doit être égal à __version__, sinon la CI refuse
-git push origin agent-v0.2.0
+git tag agent-v0.3.0          # doit être égal à __version__, sinon la CI refuse
+git push origin agent-v0.3.0
 ```
 
 La release devient « latest » : `install.sh` et le paquet sont téléchargés depuis
@@ -90,6 +90,7 @@ journalctl -u discover-agent.service
 | `apache2ctl -S`, `/etc/apache2/sites-enabled/*` | vhosts actifs, domaines, ports, HTTPS, DocumentRoot, ProxyPass, handler PHP-FPM |
 | `/etc/php/*/fpm/pool.d/*.conf` | utilisateur et version PHP des pools |
 | `ss -ltnp`, `/proc/<pid>` | processus Node derrière un `ProxyPass`, son utilisateur, son dossier, systemd/PM2 |
+| API Docker (`/var/run/docker.sock`, requêtes `GET` uniquement) | conteneurs, image, état, ports publiés, projet/service Compose, politique de redémarrage — jamais les variables d'environnement ni les autres labels |
 | `wp-config.php`, `.env`, `.env.local`, `.env.production` | **nom** de la base, **utilisateur**, **hôte** — jamais les mots de passe |
 | MySQL/MariaDB (socket local) | bases, tailles, comptes `user@host`, droits — jamais les empreintes de mot de passe |
 

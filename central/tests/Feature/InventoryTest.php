@@ -3,6 +3,7 @@
 use App\Models\Database;
 use App\Models\DbGrant;
 use App\Models\DbUser;
+use App\Models\DockerContainer;
 use App\Models\NodeApp;
 use App\Models\Server;
 use App\Models\Site;
@@ -78,7 +79,7 @@ it('replaces the current state on each snapshot and keeps the history', function
     }))->assertOk();
 
     expect($server->sites()->where('server_name', 'api.example.com')->exists())->toBeFalse()
-        ->and($server->sites()->count())->toBe(2)
+        ->and($server->sites()->count())->toBe(3)
         ->and($server->databases()->sole()->size_bytes)->toBe(2048)
         ->and($server->dbUsers()->count())->toBe(3)
         ->and($server->snapshots()->count())->toBe(2);
@@ -169,6 +170,9 @@ it('validates the snapshot', function (callable $change, string $field) {
     'nameless technology' => [function ($s) { $s['apache']['sites'][0]['technologies'] = [['version' => '1']]; return $s; }, 'apache.sites.0.technologies.0.name'],
     'bad node port' => [function ($s) { $s['node']['apps'][0]['listen'][0]['port'] = 0; return $s; }, 'node.apps.0.listen.0.port'],
     'node without apps' => [function ($s) { $s['node'] = []; return $s; }, 'node.apps'],
+    'docker without containers' => [function ($s) { $s['docker'] = ['version' => '27.3.1']; return $s; }, 'docker.containers'],
+    'bad docker port' => [function ($s) { $s['docker']['containers'][0]['ports'][0]['port'] = 70000; return $s; }, 'docker.containers.0.ports.0.port'],
+    'nameless container' => [function ($s) { unset($s['docker']['containers'][0]['name']); return $s; }, 'docker.containers.0.name'],
 ]);
 
 it('does not store fields outside the schema', function () {
@@ -300,4 +304,92 @@ it('still accepts agents 0.1.0, which send neither technologies nor Node apps', 
     expect($server->nodeApps()->count())->toBe(0)
         ->and($server->sites()->whereNotNull('technologies')->count())->toBe(0)
         ->and($server->sites()->where('server_name', 'api.example.com')->sole()->node_app_id)->toBeNull();
+});
+
+it('stores the Docker containers of the server and the Docker version', function () {
+    [$server, $token] = enrolledServer();
+    sendInventory($this, $token, snapshotFixture())->assertOk();
+
+    $containers = $server->dockerContainers()->orderBy('id')->get();
+    expect($server->refresh()->docker_version)->toBe('27.3.1')
+        ->and($containers->pluck('name')->all())->toBe(['shop-web-1', 'pg', 'old-job'])
+        ->and($containers[0]->container_id)->toBe('a1b2c3d4e5f6')
+        ->and($containers[0]->label())->toBe('shop / web')
+        ->and($containers[0]->ports())->toBe([8080])
+        ->and($containers[0]->isExposed())->toBeFalse()
+        ->and($containers[0]->started_at->toIso8601ZuluString())->toBe('2026-10-10T08:12:03Z')
+        ->and($containers[1]->label())->toBe('pg')
+        ->and($containers[1]->isExposed())->toBeTrue()
+        ->and($containers[2]->started_at)->toBeNull();
+});
+
+it('links a Docker site to the container publishing its proxy port', function () {
+    [$server, $token] = enrolledServer();
+    sendInventory($this, $token, snapshotFixture())->assertOk();
+
+    $app = $server->sites()->where('server_name', 'app.example.com')->sole();
+    expect($app->dockerContainer->name)->toBe('shop-web-1')
+        ->and($app->dockerContainer->sites->pluck('server_name')->all())->toBe(['app.example.com'])
+        ->and(DockerContainer::where('name', 'pg')->sole()->sites)->toBeEmpty();
+});
+
+it('links a Docker site only to a container its loopback proxy can reach, and only when it is the only one', function () {
+    [$server, $token] = enrolledServer();
+    $container = fn (string $name, string $address) => [
+        'id' => substr(md5($name), 0, 12), 'name' => $name, 'image' => 'nginx', 'image_version' => null,
+        'state' => 'running', 'ports' => [['address' => $address, 'port' => 8080, 'container_port' => 80, 'protocol' => 'tcp']],
+        'compose_project' => null, 'compose_service' => null, 'compose_dir' => null,
+        'restart_policy' => null, 'started_at' => null,
+    ];
+    $linked = fn () => $server->sites()->where('server_name', 'app.example.com')->sole()->dockerContainer?->name;
+    $send = fn (array $containers) => sendInventory($this, $token, snapshotFixture(
+        fn ($s) => array_merge($s, ['docker' => ['version' => null, 'containers' => $containers]])
+    ))->assertOk();
+
+    $send([$container('lan-only', '10.0.0.11'), $container('local', '127.0.0.1')]);
+    expect($linked())->toBe('local');
+
+    $send([$container('v4', '0.0.0.0'), $container('other', '127.0.0.1')]);
+    expect($linked())->toBeNull();
+
+    // One container bound on IPv4 and IPv6 is still one container.
+    $both = $container('both', '0.0.0.0');
+    $both['ports'][] = ['address' => '::', 'port' => 8080, 'container_port' => 80, 'protocol' => 'tcp'];
+    $send([$both]);
+    expect($linked())->toBe('both');
+});
+
+it('replaces the Docker containers on each snapshot', function () {
+    [$server, $token] = enrolledServer();
+    sendInventory($this, $token, snapshotFixture())->assertOk();
+    sendInventory($this, $token, snapshotFixture(function ($s) {
+        $s['docker']['containers'] = array_slice($s['docker']['containers'], 0, 1);
+
+        return $s;
+    }))->assertOk();
+
+    expect($server->dockerContainers()->sole()->name)->toBe('shop-web-1')
+        ->and($server->sites()->where('server_name', 'app.example.com')->sole()->docker_container_id)
+        ->toBe($server->dockerContainers()->sole()->id);
+});
+
+it('still accepts agents 0.2.0, which send no Docker section', function () {
+    [$server, $token] = enrolledServer();
+
+    sendInventory($this, $token, snapshotFixture(function ($s) {
+        unset($s['docker']);
+
+        return $s;
+    }))->assertOk();
+
+    expect($server->dockerContainers()->count())->toBe(0)
+        ->and($server->refresh()->docker_version)->toBeNull();
+});
+
+it('accepts a server without Docker', function () {
+    [$server, $token] = enrolledServer();
+
+    sendInventory($this, $token, snapshotFixture(fn ($s) => array_merge($s, ['docker' => null])))->assertOk();
+
+    expect($server->dockerContainers()->count())->toBe(0);
 });

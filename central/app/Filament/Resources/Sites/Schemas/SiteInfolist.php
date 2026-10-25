@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Sites\Schemas;
 
 use App\Filament\Resources\Databases\DatabaseResource;
+use App\Filament\Resources\Servers\RelationManagers\DockerContainersRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\NodeAppsRelationManager;
 use App\Filament\Resources\Servers\ServerResource;
 use App\Models\Site;
@@ -68,6 +69,20 @@ class SiteInfolist
                                 ? ServerResource::getUrl('view', ['record' => $record->server_id, 'relation' => ServerResource::relationIndex(NodeAppsRelationManager::class)])
                                 : null)
                             ->placeholder('Aucun processus Node trouvé sur ce port'),
+                        TextEntry::make('dockerContainer')
+                            ->label('Conteneur Docker')
+                            ->visible(fn (Site $record) => $record->type === 'docker')
+                            ->state(fn (Site $record) => ($container = $record->dockerContainer) ? array_filter([
+                                $container->label() === $container->name ? $container->name : "{$container->name} ({$container->label()})",
+                                $container->image,
+                                'port '.implode(', ', $container->ports()),
+                                $container->state === 'running' ? null : $container->stateLabel(),
+                            ]) : null)
+                            ->listWithLineBreaks()
+                            ->url(fn (Site $record) => $record->dockerContainer
+                                ? ServerResource::getUrl('view', ['record' => $record->server_id, 'relation' => ServerResource::relationIndex(DockerContainersRelationManager::class)])
+                                : null)
+                            ->placeholder('Aucun conteneur ne publie ce port'),
                         TextEntry::make('php_version')->label('PHP')->placeholder('—'),
                         TextEntry::make('process_manager')->label('Gestionnaire du processus')->placeholder('—'),
                         TextEntry::make('config_file')->label('Fichier de configuration')->placeholder('—'),

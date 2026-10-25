@@ -109,6 +109,9 @@ class CollectApacheTest(unittest.TestCase):
     def test_node_is_a_default_collector(self):
         self.assertIn("node", snapshot.default_collectors([]))
 
+    def test_docker_is_a_default_collector(self):
+        self.assertIn("docker", snapshot.default_collectors([]))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,7 @@ from typing import Callable
 from urllib.parse import urlsplit
 
 from discover_agent import util
+from discover_agent.collectors import docker
 
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]", "0.0.0.0"}
 POOL_GLOB = "/etc/php/*/fpm/pool.d/*.conf"
@@ -36,6 +37,7 @@ class SiteContext:
     proc_info: Callable
     owner: Callable
     cert_expiry: Callable
+    docker_ports: frozenset = frozenset()
 
 
 def normalize_socket(path):
@@ -144,7 +146,11 @@ def classify(vhost, ctx):
     if vhost["proxy_pass"]:
         site["upstream"] = strip_userinfo(vhost["proxy_pass"])
         target = urlsplit(site["upstream"])
-        if target.scheme in ("http", "https") and target.hostname in LOCAL_HOSTS and target.port:
+        if target.scheme in ("http", "https") and target.hostname in LOCAL_HOSTS and target.port in ctx.docker_ports:
+            # docker-proxy holds the socket as root: the container is described by the docker section.
+            site["type"] = "docker"
+            site["process_manager"] = "docker"
+        elif target.scheme in ("http", "https") and target.hostname in LOCAL_HOSTS and target.port:
             site["type"] = "node"
             pid = ctx.listeners.get(target.port)
             info = ctx.proc_info(pid) if pid else None
@@ -247,4 +253,5 @@ def build_context(runner=util.run):
         proc_info=proc_info,
         owner=owner_of,
         cert_expiry=lambda path: cert_expiry(path, runner),
+        docker_ports=frozenset(docker.published_ports()),
     )

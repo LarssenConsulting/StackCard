@@ -9,8 +9,8 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Validator;
 
 /**
- * A fake server (PHP sites on several versions, Node apps with and without a vhost) to see the
- * admin panel without a real agent: php artisan db:seed --class=DemoServerSeeder
+ * A fake server (PHP sites on several versions, Node apps and Docker containers with and without
+ * a vhost) to see the admin panel without a real agent: php artisan db:seed --class=DemoServerSeeder
  * Running it again refreshes the same server.
  */
 class DemoServerSeeder extends Seeder

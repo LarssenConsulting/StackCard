@@ -30,6 +30,7 @@ class ServerInfolist
                         TextEntry::make('virtualization')->label('Virtualisation')->placeholder('—'),
                         TextEntry::make('apache_version')->label('Apache')->placeholder('—'),
                         TextEntry::make('mysql_version')->label('MySQL / MariaDB')->placeholder('—'),
+                        TextEntry::make('docker_version')->label('Docker')->placeholder('—'),
                     ]),
                 Section::make('Agent')
                     ->schema([

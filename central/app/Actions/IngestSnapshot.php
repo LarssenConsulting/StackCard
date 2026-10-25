@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Models\DockerContainer;
 use App\Models\NodeApp;
 use App\Models\Server;
 use App\Models\Snapshot;
@@ -48,6 +49,7 @@ class IngestSnapshot
             'virtualization' => $info['virtualization'] ?? null,
             'apache_version' => $snapshot['apache']['version'] ?? null,
             'mysql_version' => $snapshot['mysql']['version'] ?? null,
+            'docker_version' => $snapshot['docker']['version'] ?? null,
             'agent_version' => $snapshot['agent_version'] ?? null,
             'last_seen_at' => now(),
             'last_source_ip' => $sourceIp,
@@ -56,7 +58,8 @@ class IngestSnapshot
         $this->clearState($server);
         $this->storeIps($server, $info['interfaces']);
         $nodeApps = $this->storeNodeApps($server, $snapshot['node']['apps'] ?? []);
-        $this->storeSites($server, $snapshot['apache']['sites'] ?? [], $nodeApps);
+        $containers = $this->storeDockerContainers($server, $snapshot['docker']['containers'] ?? []);
+        $this->storeSites($server, $snapshot['apache']['sites'] ?? [], $nodeApps, $containers);
         $this->storeMysql($server, $snapshot['mysql'] ?? null);
 
         return $record;
@@ -77,6 +80,7 @@ class IngestSnapshot
         $server->ips()->delete();
         $server->sites()->delete();      // cascades to site_db_refs
         $server->nodeApps()->delete();
+        $server->dockerContainers()->delete();
         $server->dbUsers()->delete();    // cascades to db_grants
         $server->databases()->delete();
     }
@@ -117,14 +121,39 @@ class IngestSnapshot
         return array_map(fn (array $ids) => array_key_first($ids), array_filter($candidates, fn (array $ids) => count($ids) === 1));
     }
 
-    private function storeSites(Server $server, array $sites, array $nodeApps): void
+    /**
+     * Docker sites proxy to a loopback address too: only a container publishing the port on
+     * loopback or on every address can serve them.
+     *
+     * @return array<int, int> container id by host port, for ports exactly one such container publishes
+     */
+    private function storeDockerContainers(Server $server, array $containers): array
+    {
+        $candidates = [];
+        foreach ($containers as $data) {
+            $container = $server->dockerContainers()->create(array_merge(Arr::except($data, ['id', 'started_at']), [
+                'container_id' => $data['id'],
+                'started_at' => isset($data['started_at']) ? Carbon::parse($data['started_at']) : null,
+            ]));
+            foreach ($container->ports as $port) {
+                if (in_array($port['address'], [...NodeApp::LOOPBACK, ...NodeApp::WILDCARD], true)) {
+                    $candidates[$port['port']][$container->id] = $container->id;
+                }
+            }
+        }
+
+        return array_map(fn (array $ids) => array_key_first($ids), array_filter($candidates, fn (array $ids) => count($ids) === 1));
+    }
+
+    private function storeSites(Server $server, array $sites, array $nodeApps, array $containers): void
     {
         foreach ($sites as $data) {
-            // A Node site proxies to a local port: the app listening there serves it.
-            $port = $data['type'] === 'node' ? parse_url((string) $data['upstream'], PHP_URL_PORT) : null;
+            // A Node or Docker site proxies to a local port: the app listening there serves it.
+            $port = in_array($data['type'], ['node', 'docker'], true) ? parse_url((string) $data['upstream'], PHP_URL_PORT) : null;
             $site = $server->sites()->create(array_merge(Arr::except($data, ['db_refs', 'cert_expires_at']), [
                 'cert_expires_at' => isset($data['cert_expires_at']) ? Carbon::parse($data['cert_expires_at']) : null,
-                'node_app_id' => $port ? ($nodeApps[$port] ?? null) : null,
+                'node_app_id' => $port && $data['type'] === 'node' ? ($nodeApps[$port] ?? null) : null,
+                'docker_container_id' => $port && $data['type'] === 'docker' ? ($containers[$port] ?? null) : null,
             ]));
             foreach ($data['db_refs'] as $ref) {
                 $site->dbRefs()->create(Arr::only($ref, ['db_name', 'db_user', 'db_host', 'source']));

@@ -144,6 +144,15 @@ class ClassifyTest(unittest.TestCase):
         self.assertIsNone(site["app_dir"])
         self.assertIsNone(site["owner_user"])
 
+    def test_proxy_to_a_port_published_by_docker_is_a_docker_site(self):
+        # docker-proxy holds the socket as root: neither its user nor its cwd describe the app.
+        site = sites.classify(vhost(proxy_pass="http://127.0.0.1:8080/"), context(docker_ports={8080}))
+        self.assertEqual(site["type"], "docker")
+        self.assertEqual(site["upstream"], "http://127.0.0.1:8080/")
+        self.assertEqual(site["process_manager"], "docker")
+        self.assertIsNone(site["system_user"])
+        self.assertIsNone(site["app_dir"])
+
     def test_external_proxy(self):
         site = sites.classify(vhost(proxy_pass="http://10.0.0.20:8080/"), context())
         self.assertEqual(site["type"], "proxy")

@@ -22,7 +22,7 @@ class Server extends Model
 
     protected $fillable = [
         'name', 'hostname', 'fqdn', 'machine_id', 'primary_ip', 'os', 'kernel', 'virtualization',
-        'apache_version', 'mysql_version', 'agent_version', 'status', 'last_seen_at',
+        'apache_version', 'mysql_version', 'docker_version', 'agent_version', 'status', 'last_seen_at',
         'last_source_ip', 'notes',
     ];
 
@@ -44,6 +44,11 @@ class Server extends Model
     public function nodeApps(): HasMany
     {
         return $this->hasMany(NodeApp::class);
+    }
+
+    public function dockerContainers(): HasMany
+    {
+        return $this->hasMany(DockerContainer::class);
     }
 
     public function databases(): HasMany

@@ -3,7 +3,7 @@
 use App\Models\Server;
 use Database\Seeders\DemoServerSeeder;
 
-it('creates a fake server with PHP sites and Node apps, and refreshes it when run again', function () {
+it('creates a fake server with PHP sites, Node apps and Docker containers, and refreshes it when run again', function () {
     $this->seed(DemoServerSeeder::class);
     $this->seed(DemoServerSeeder::class);
 
@@ -13,5 +13,7 @@ it('creates a fake server with PHP sites and Node apps, and refreshes it when ru
         ->and($server->nodeApps()->count())->toBe(5)
         ->and($server->nodeApps()->whereDoesntHave('sites')->sole()->name)->toBe('mailer-worker')
         ->and($server->sites()->where('type', 'node')->whereNull('node_app_id')->count())->toBe(0)
+        ->and($server->dockerContainers()->count())->toBe(4)
+        ->and($server->sites()->where('type', 'docker')->sole()->dockerContainer->name)->toBe('uptime-kuma')
         ->and($server->snapshots()->count())->toBe(2);
 });

@@ -6,6 +6,7 @@ use App\Filament\Resources\Servers\Pages\CreateServer;
 use App\Filament\Resources\Servers\Pages\ListServers;
 use App\Filament\Resources\Servers\Pages\ViewServer;
 use App\Filament\Resources\Servers\RelationManagers\DatabasesRelationManager;
+use App\Filament\Resources\Servers\RelationManagers\DockerContainersRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\NodeAppsRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SitesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SnapshotsRelationManager;
@@ -17,6 +18,7 @@ use App\Filament\Widgets\PartialSites;
 use App\Filament\Widgets\RecentCollectorErrors;
 use App\Filament\Widgets\StaleServers;
 use App\Models\Database;
+use App\Models\DockerContainer;
 use App\Models\EnrollmentToken;
 use App\Models\NodeApp;
 use App\Models\Server;
@@ -196,6 +198,33 @@ it('shows on a Node site the app that serves it', function () {
         ->assertSee('Node 20.18.0')
         ->assertSee('port 3000')
         ->assertSee('relation=1', escape: false);
+});
+
+it('lists the Docker containers of a server, with the sites that use them', function () {
+    Livewire::test(DockerContainersRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
+        ->assertCanSeeTableRecords($this->web->dockerContainers)
+        ->assertTableColumnStateSet('sites', ['app.example.com'], DockerContainer::where('name', 'shop-web-1')->sole())
+        ->assertSee('nginx:1.27')
+        ->assertSee('127.0.0.1:8080 → 80/tcp')
+        ->assertSee('[::]:5432 → 5432/tcp')
+        ->assertSee('En marche')
+        ->assertSee('Arrêté')
+        ->assertSee('unless-stopped');
+});
+
+it('shows on a Docker site the container that serves it', function () {
+    $app = Site::where('server_name', 'app.example.com')->sole();
+
+    Livewire::test(ViewSite::class, ['record' => $app->getRouteKey()])
+        ->assertSee('Conteneur Docker')
+        ->assertSee('shop-web-1')
+        ->assertSee('nginx:1.27')
+        ->assertSee('port 8080')
+        ->assertSee('relation=2', escape: false);
+});
+
+it('shows the Docker version of a server', function () {
+    Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])->assertSee('27.3.1');
 });
 
 it('shows the chain from a site to its database account', function () {

@@ -48,6 +48,14 @@
           {"db_name": "api_prod", "db_user": "api", "db_host": "10.0.0.20", "source": "/srv/api/.env"}
         ],
         "technologies": [{"name": "Express", "version": "4.21.1"}]
+      },
+      {
+        "server_name": "app.example.com", "aliases": [], "port": 443, "https": true,
+        "cert_expires_at": "2027-01-15T00:00:00Z", "type": "docker", "document_root": null,
+        "app_dir": null, "upstream": "http://127.0.0.1:8080/", "php_version": null,
+        "system_user": null, "system_group": null, "owner_user": null, "owner_group": null,
+        "process_manager": "docker", "config_file": "/etc/apache2/sites-enabled/app.conf",
+        "partial": false, "db_refs": [], "technologies": []
       }
     ]
   },
@@ -81,6 +89,33 @@
         "listen": [{"address": "0.0.0.0", "port": 4000}],
         "user": "worker", "group": "worker", "app_dir": "/home/worker/app",
         "process_manager": "pm2", "technologies": []
+      }
+    ]
+  },
+  "docker": {
+    "version": "27.3.1",
+    "containers": [
+      {
+        "id": "a1b2c3d4e5f6", "name": "shop-web-1", "image": "nginx:1.27", "image_version": "1.27.2",
+        "state": "running",
+        "ports": [{"address": "127.0.0.1", "port": 8080, "container_port": 80, "protocol": "tcp"}],
+        "compose_project": "shop", "compose_service": "web", "compose_dir": "/srv/shop",
+        "restart_policy": "unless-stopped", "started_at": "2026-10-10T08:12:03Z"
+      },
+      {
+        "id": "0f9e8d7c6b5a", "name": "pg", "image": "postgres:16", "image_version": null,
+        "state": "running",
+        "ports": [
+          {"address": "0.0.0.0", "port": 5432, "container_port": 5432, "protocol": "tcp"},
+          {"address": "::", "port": 5432, "container_port": 5432, "protocol": "tcp"}
+        ],
+        "compose_project": null, "compose_service": null, "compose_dir": null,
+        "restart_policy": "always", "started_at": "2026-10-09T00:00:00Z"
+      },
+      {
+        "id": "abcdefabcdef", "name": "old-job", "image": "busybox", "image_version": null,
+        "state": "exited", "ports": [], "compose_project": null, "compose_service": null,
+        "compose_dir": null, "restart_policy": "no", "started_at": null
       }
     ]
   },

@@ -13,6 +13,7 @@ class Site extends Model
         'php-fpm' => 'PHP-FPM',
         'php-mod' => 'mod_php',
         'node' => 'Node / JS',
+        'docker' => 'Docker',
         'proxy' => 'Proxy externe',
         'static' => 'Statique',
     ];
@@ -21,7 +22,7 @@ class Site extends Model
         'server_id', 'server_name', 'aliases', 'port', 'https', 'cert_expires_at', 'type',
         'document_root', 'app_dir', 'upstream', 'php_version', 'system_user', 'system_group',
         'owner_user', 'owner_group', 'process_manager', 'config_file', 'partial', 'technologies',
-        'node_app_id',
+        'node_app_id', 'docker_container_id',
     ];
 
     protected function casts(): array
@@ -84,6 +85,11 @@ class Site extends Model
     public function nodeApp(): BelongsTo
     {
         return $this->belongsTo(NodeApp::class);
+    }
+
+    public function dockerContainer(): BelongsTo
+    {
+        return $this->belongsTo(DockerContainer::class);
     }
 
     public function dbRefs(): HasMany

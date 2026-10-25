@@ -3,7 +3,7 @@
 import socket
 
 from discover_agent import __version__, util
-from discover_agent.collectors import apache, dbrefs, mysql, node, server, sites, techs
+from discover_agent.collectors import apache, dbrefs, docker, mysql, node, server, sites, techs
 
 SCHEMA_VERSION = 1
 
@@ -64,6 +64,7 @@ def default_collectors(errors):
         "apache": lambda: collect_apache(errors),
         "mysql": mysql.collect_mysql,
         "node": node.collect_node,
+        "docker": docker.collect_docker,
     }
 
 

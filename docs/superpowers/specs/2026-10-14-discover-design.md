@@ -96,6 +96,8 @@ Pour chaque site : `owner_user` et `owner_group` du dossier applicatif. Pour `no
 
 **Applications Node** (ajout 0.2.0) : tout processus dont l'exécutable (`/proc/<pid>/exe`) est `node`/`nodejs` et qui écoute un port TCP (`ss -Hltnp`), avec ou sans vhost devant. Un même processus (ou des workers qui partagent le socket) donne une seule application, regroupée par (utilisateur, dossier, gestionnaire). Pour chacune : `name`/`version` du `package.json` de son dossier, `node_version` (dossier nvm/n dans le chemin de l'exécutable, sinon `dpkg-query` du paquet `nodejs` ; jamais en lançant `node`), `listen` (`[{address, port}]`), `user`, `group`, `app_dir` (cwd), `process_manager`, `technologies`.
 
+**Conteneurs Docker** (ajout 0.3.0, si `/var/run/docker.sock` est un socket) : l'API Engine est lue par ce socket Unix, en `GET` uniquement (`/version`, `/containers/json?all=1`, puis `/containers/<id>/json` pour chaque conteneur dont l'id est hexadécimal). Pour chaque conteneur, arrêté ou non : `id` (12 caractères), `name`, `image`, `image_version` (label `org.opencontainers.image.version`), `state`, `ports` (ports publiés sur l'hôte : `[{address, port, container_port, protocol}]`), `compose_project`, `compose_service`, `compose_dir` (labels `com.docker.compose.*`), `restart_policy`, `started_at`. Les variables d'environnement et les autres labels ne sont jamais repris : ils contiennent souvent des secrets. Un vhost dont le `ProxyPass` vise un port local publié par un conteneur en marche est de type `docker` (et non `node`) ; le central le relie au seul conteneur qui publie ce port sur loopback ou sur toutes les adresses.
+
 **MySQL/MariaDB** (si `mysql` est installé) :
 - Client `mysql --protocol=socket -N -B`, en root par socket Unix. Si `/etc/discover-agent/mysql.cnf` existe, il est passé avec `--defaults-extra-file`.
 - `SELECT VERSION()` ;
@@ -137,7 +139,7 @@ Pour chaque site : `owner_user` et `owner_group` du dossier applicatif. Pour `no
 }
 ```
 
-Si Apache est absent, `apache` vaut `null`. Si MySQL est absent, `mysql` vaut `null`. `technologies` et `node` sont apparus avec l'agent 0.2.0 : le central les accepte absents (agents 0.1.0), sans changer `schema_version`.
+Si Apache est absent, `apache` vaut `null`. Si MySQL est absent, `mysql` vaut `null`. `technologies` et `node` sont apparus avec l'agent 0.2.0 : le central les accepte absents (agents 0.1.0), sans changer `schema_version`. De même pour `docker` (agent 0.3.0), qui vaut `null` sans Docker.
 
 ### 4.6 Packaging
 
