@@ -26,6 +26,7 @@ class SitesTable
                     ->searchable(query: fn (Builder $query, string $search) => $query->where(
                         fn (Builder $q) => $q->where('server_name', 'like', "%{$search}%")
                             ->orWhere('aliases', 'like', "%{$search}%")
+                            ->orWhere('technologies', 'like', "%{$search}%")
                     ))
                     ->sortable()
                     ->placeholder('(sans ServerName)'),
@@ -35,6 +36,12 @@ class SitesTable
                     ->label('Type')
                     ->badge()
                     ->formatStateUsing(fn (string $state) => Site::TYPES[$state] ?? $state),
+                TextColumn::make('technologies')
+                    ->label('Technos')
+                    ->state(fn (Site $record) => Site::technologyLabels($record->technologies))
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder('—'),
                 $withServer ? TextColumn::make('server.name')->label('Serveur')->sortable()->searchable() : null,
                 TextColumn::make('system_user')->label('Utilisateur système')->searchable()->placeholder('—'),
                 TextColumn::make('php_version')->label('PHP')->placeholder('—')->toggleable(),

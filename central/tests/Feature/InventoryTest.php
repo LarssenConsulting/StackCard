@@ -3,6 +3,7 @@
 use App\Models\Database;
 use App\Models\DbGrant;
 use App\Models\DbUser;
+use App\Models\NodeApp;
 use App\Models\Server;
 use App\Models\Site;
 use App\Models\Snapshot;
@@ -165,6 +166,9 @@ it('validates the snapshot', function (callable $change, string $field) {
     'bad site type' => [function ($s) { $s['apache']['sites'][0]['type'] = 'perl'; return $s; }, 'apache.sites.0.type'],
     'bad port' => [function ($s) { $s['apache']['sites'][0]['port'] = 70000; return $s; }, 'apache.sites.0.port'],
     'bad ip' => [function ($s) { $s['server']['primary_ip'] = 'not-an-ip'; return $s; }, 'server.primary_ip'],
+    'nameless technology' => [function ($s) { $s['apache']['sites'][0]['technologies'] = [['version' => '1']]; return $s; }, 'apache.sites.0.technologies.0.name'],
+    'bad node port' => [function ($s) { $s['node']['apps'][0]['listen'][0]['port'] = 0; return $s; }, 'node.apps.0.listen.0.port'],
+    'node without apps' => [function ($s) { $s['node'] = []; return $s; }, 'node.apps'],
 ]);
 
 it('does not store fields outside the schema', function () {
@@ -210,4 +214,63 @@ it('rate-limits each agent token', function () {
         sendInventory($this, $token, $snapshot)->assertOk();
     }
     sendInventory($this, $token, $snapshot)->assertTooManyRequests();
+});
+
+it('stores the technologies of each site and the Node apps of the server', function () {
+    [$server, $token] = enrolledServer();
+    sendInventory($this, $token, snapshotFixture())->assertOk();
+
+    $shop = $server->sites()->where('port', 443)->where('server_name', 'shop.example.com')->sole();
+    expect($shop->technologies)->toBe([
+        ['name' => 'Laravel', 'version' => '12.3.0'], ['name' => 'Filament', 'version' => '4.1.2'],
+    ]);
+
+    $apps = $server->nodeApps()->orderBy('id')->get();
+    expect($apps)->toHaveCount(2)
+        ->and($apps[0]->label())->toBe('api 1.4.0')
+        ->and($apps[0]->ports())->toBe([3000])
+        ->and($apps[0]->isExposed())->toBeFalse()
+        ->and($apps[1]->label())->toBe('app')
+        ->and($apps[1]->isExposed())->toBeTrue();
+});
+
+it('links a Node site to the app listening on its proxy port', function () {
+    [$server, $token] = enrolledServer();
+    sendInventory($this, $token, snapshotFixture())->assertOk();
+
+    $api = $server->sites()->where('server_name', 'api.example.com')->sole();
+    expect($api->nodeApp->name)->toBe('api')
+        ->and($api->nodeApp->sites->pluck('server_name')->all())->toBe(['api.example.com'])
+        ->and(NodeApp::where('name', null)->sole()->sites)->toBeEmpty();
+});
+
+it('replaces the Node apps on each snapshot', function () {
+    [$server, $token] = enrolledServer();
+    sendInventory($this, $token, snapshotFixture())->assertOk();
+    sendInventory($this, $token, snapshotFixture(function ($s) {
+        $s['node']['apps'] = array_slice($s['node']['apps'], 0, 1);
+
+        return $s;
+    }))->assertOk();
+
+    expect($server->nodeApps()->sole()->name)->toBe('api')
+        ->and($server->sites()->where('server_name', 'api.example.com')->sole()->node_app_id)
+        ->toBe($server->nodeApps()->sole()->id);
+});
+
+it('still accepts agents 0.1.0, which send neither technologies nor Node apps', function () {
+    [$server, $token] = enrolledServer();
+
+    sendInventory($this, $token, snapshotFixture(function ($s) {
+        unset($s['node']);
+        foreach ($s['apache']['sites'] as &$site) {
+            unset($site['technologies']);
+        }
+
+        return $s;
+    }))->assertOk();
+
+    expect($server->nodeApps()->count())->toBe(0)
+        ->and($server->sites()->whereNotNull('technologies')->count())->toBe(0)
+        ->and($server->sites()->where('server_name', 'api.example.com')->sole()->node_app_id)->toBeNull();
 });

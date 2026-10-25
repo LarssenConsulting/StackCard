@@ -54,7 +54,8 @@ class IngestSnapshot
 
         $this->clearState($server);
         $this->storeIps($server, $info['interfaces']);
-        $this->storeSites($server, $snapshot['apache']['sites'] ?? []);
+        $nodeApps = $this->storeNodeApps($server, $snapshot['node']['apps'] ?? []);
+        $this->storeSites($server, $snapshot['apache']['sites'] ?? [], $nodeApps);
         $this->storeMysql($server, $snapshot['mysql'] ?? null);
 
         return $record;
@@ -74,6 +75,7 @@ class IngestSnapshot
     {
         $server->ips()->delete();
         $server->sites()->delete();      // cascades to site_db_refs
+        $server->nodeApps()->delete();
         $server->dbUsers()->delete();    // cascades to db_grants
         $server->databases()->delete();
     }
@@ -92,11 +94,28 @@ class IngestSnapshot
         }
     }
 
-    private function storeSites(Server $server, array $sites): void
+    /** @return array<int, int> node app id by listening port */
+    private function storeNodeApps(Server $server, array $apps): array
+    {
+        $byPort = [];
+        foreach ($apps as $data) {
+            $app = $server->nodeApps()->create($data);
+            foreach ($app->ports() as $port) {
+                $byPort[$port] ??= $app->id;
+            }
+        }
+
+        return $byPort;
+    }
+
+    private function storeSites(Server $server, array $sites, array $nodeApps): void
     {
         foreach ($sites as $data) {
+            // A Node site proxies to a local port: the app listening there serves it.
+            $port = $data['type'] === 'node' ? parse_url((string) $data['upstream'], PHP_URL_PORT) : null;
             $site = $server->sites()->create(array_merge(Arr::except($data, ['db_refs', 'cert_expires_at']), [
                 'cert_expires_at' => isset($data['cert_expires_at']) ? Carbon::parse($data['cert_expires_at']) : null,
+                'node_app_id' => $port ? ($nodeApps[$port] ?? null) : null,
             ]));
             foreach ($data['db_refs'] as $ref) {
                 $site->dbRefs()->create(Arr::only($ref, ['db_name', 'db_user', 'db_host', 'source']));

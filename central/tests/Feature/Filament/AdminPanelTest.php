@@ -6,6 +6,7 @@ use App\Filament\Resources\Servers\Pages\CreateServer;
 use App\Filament\Resources\Servers\Pages\ListServers;
 use App\Filament\Resources\Servers\Pages\ViewServer;
 use App\Filament\Resources\Servers\RelationManagers\DatabasesRelationManager;
+use App\Filament\Resources\Servers\RelationManagers\NodeAppsRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SitesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SnapshotsRelationManager;
 use App\Filament\Resources\Sites\Pages\ListSites;
@@ -17,6 +18,7 @@ use App\Filament\Widgets\RecentCollectorErrors;
 use App\Filament\Widgets\StaleServers;
 use App\Models\Database;
 use App\Models\EnrollmentToken;
+use App\Models\NodeApp;
 use App\Models\Server;
 use App\Models\Site;
 use App\Models\SiteDbRef;
@@ -129,6 +131,42 @@ it('lists a site served on ports 80 and 443 once, as its HTTPS vhost', function 
         ->assertDontSee('www.shop.example.com, www.shop.example.com');
     Livewire::test(ViewSite::class, ['record' => $https->getRouteKey()])
         ->assertSee('80, 443');
+});
+
+it('shows the technologies of each site and finds sites by technology', function () {
+    $shop = Site::where('server_name', 'shop.example.com')->where('port', 443)->sole();
+    $api = Site::where('server_name', 'api.example.com')->sole();
+
+    Livewire::test(ListSites::class)
+        ->assertTableColumnStateSet('technologies', ['Laravel 12.3.0', 'Filament 4.1.2'], $shop)
+        ->searchTable('Express')
+        ->assertCanSeeTableRecords([$api])
+        ->assertCanNotSeeTableRecords([$shop]);
+    Livewire::test(ViewSite::class, ['record' => $shop->getRouteKey()])
+        ->assertSee('Laravel 12.3.0');
+});
+
+it('lists the Node apps of a server, with the sites that use them', function () {
+    Livewire::test(NodeAppsRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
+        ->assertCanSeeTableRecords($this->web->nodeApps)
+        ->assertTableColumnStateSet('sites', ['api.example.com'], NodeApp::where('name', 'api')->sole())
+        ->assertSee('127.0.0.1:3000')
+        ->assertSee('Local uniquement')
+        ->assertSee('Réseau')
+        ->assertSee('Aucun (pas de vhost devant)')
+        ->assertSee('Node')
+        ->assertSee('22.11.0');
+});
+
+it('shows on a Node site the app that serves it', function () {
+    $api = Site::where('server_name', 'api.example.com')->sole();
+
+    Livewire::test(ViewSite::class, ['record' => $api->getRouteKey()])
+        ->assertSee('Application Node')
+        ->assertSee('api 1.4.0')
+        ->assertSee('Node 20.18.0')
+        ->assertSee('port 3000')
+        ->assertSee('relation=1', escape: false);
 });
 
 it('shows the chain from a site to its database account', function () {

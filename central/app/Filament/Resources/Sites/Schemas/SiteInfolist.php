@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Sites\Schemas;
 
 use App\Filament\Resources\Databases\DatabaseResource;
+use App\Filament\Resources\Servers\RelationManagers\NodeAppsRelationManager;
 use App\Filament\Resources\Servers\ServerResource;
 use App\Models\Site;
 use App\Models\SiteDbRef;
@@ -39,6 +40,12 @@ class SiteInfolist
                         TextEntry::make('cert_expires_at')->label('Expiration du certificat')->date('d/m/Y')->placeholder('—'),
                         TextEntry::make('type')->label('Type')->badge()
                             ->formatStateUsing(fn (string $state) => Site::TYPES[$state] ?? $state),
+                        TextEntry::make('technologies')
+                            ->label('Technos')
+                            ->state(fn (Site $record) => Site::technologyLabels($record->technologies))
+                            ->badge()
+                            ->color('gray')
+                            ->placeholder('Aucune reconnue'),
                     ]),
                 Section::make('Hébergement')
                     ->schema([
@@ -48,6 +55,19 @@ class SiteInfolist
                         TextEntry::make('document_root')->label('DocumentRoot')->placeholder('—')->copyable(),
                         TextEntry::make('app_dir')->label('Dossier de l’application')->placeholder('—')->copyable(),
                         TextEntry::make('upstream')->label('Cible du proxy')->placeholder('—'),
+                        TextEntry::make('nodeApp')
+                            ->label('Application Node')
+                            ->visible(fn (Site $record) => $record->type === 'node')
+                            ->state(fn (Site $record) => $record->nodeApp ? array_filter([
+                                $record->nodeApp->label(),
+                                $record->nodeApp->node_version ? "Node {$record->nodeApp->node_version}" : null,
+                                'port '.implode(', ', $record->nodeApp->ports()),
+                            ]) : null)
+                            ->listWithLineBreaks()
+                            ->url(fn (Site $record) => $record->nodeApp
+                                ? ServerResource::getUrl('view', ['record' => $record->server_id, 'relation' => ServerResource::relationIndex(NodeAppsRelationManager::class)])
+                                : null)
+                            ->placeholder('Aucun processus Node trouvé sur ce port'),
                         TextEntry::make('php_version')->label('PHP')->placeholder('—'),
                         TextEntry::make('process_manager')->label('Gestionnaire du processus')->placeholder('—'),
                         TextEntry::make('config_file')->label('Fichier de configuration')->placeholder('—'),

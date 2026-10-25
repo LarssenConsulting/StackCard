@@ -88,6 +88,14 @@ Pour chaque site : `owner_user` et `owner_group` du dossier applicatif. Pour `no
 - `.env`, `.env.local`, `.env.production` : `DB_DATABASE`/`DB_NAME`, `DB_USERNAME`/`DB_USER`, `DB_HOST` (+ `DB_PORT`), ou `DATABASE_URL` (`mysql://user:***@host:port/db`).
 - Format : `{db_name, db_user, db_host, source}` (`source` = chemin du fichier). Seules les références MySQL/MariaDB sont retenues.
 
+**Technos** (ajout 0.2.0, même recherche : dossier applicatif puis jusqu'à 2 parents, arrêt au premier niveau qui contient `composer.json`, `package.json` ou un fichier de version connu). Rien n'est exécuté ; on ne garde qu'un nom de produit connu et une chaîne en forme de version :
+- CMS par leur fichier de version : WordPress (`wp-includes/version.php`), Nextcloud (`version.php`), Drupal (`core/lib/Drupal.php`), PrestaShop (`app/AppKernel.php`), Joomla (`libraries/src/Version.php`) ;
+- frameworks PHP par `composer.lock` (≤ 8 Mio ; à défaut `composer.json`, nom sans version) : Laravel, Filament, Livewire, Symfony, Drupal, Magento, CakePHP, CodeIgniter, Yii, Slim ;
+- frameworks Node par les `dependencies` de `package.json`, version lue dans `node_modules/<paquet>/package.json` : Next.js, Nuxt, SvelteKit, Astro, Remix, NestJS, AdonisJS, Strapi, Express, Fastify, Koa, Hono.
+- Format : `technologies: [{name, version|null}]` sur chaque site.
+
+**Applications Node** (ajout 0.2.0) : tout processus dont l'exécutable (`/proc/<pid>/exe`) est `node`/`nodejs` et qui écoute un port TCP (`ss -Hltnp`), avec ou sans vhost devant. Un même processus (ou des workers qui partagent le socket) donne une seule application, regroupée par (utilisateur, dossier, gestionnaire). Pour chacune : `name`/`version` du `package.json` de son dossier, `node_version` (dossier nvm/n dans le chemin de l'exécutable, sinon `dpkg-query` du paquet `nodejs` ; jamais en lançant `node`), `listen` (`[{address, port}]`), `user`, `group`, `app_dir` (cwd), `process_manager`, `technologies`.
+
 **MySQL/MariaDB** (si `mysql` est installé) :
 - Client `mysql --protocol=socket -N -B`, en root par socket Unix. Si `/etc/discover-agent/mysql.cnf` existe, il est passé avec `--defaults-extra-file`.
 - `SELECT VERSION()` ;
@@ -115,16 +123,21 @@ Pour chaque site : `owner_user` et `owner_group` du dossier applicatif. Pour `no
                "owner_user": "shop", "owner_group": "www-data", "process_manager": null,
                "config_file": "/etc/apache2/sites-enabled/shop.conf", "partial": false,
                "db_refs": [{"db_name": "shop_prod", "db_user": "shop", "db_host": "localhost",
-                            "source": "/var/www/shop/.env"}]}]},
+                            "source": "/var/www/shop/.env"}],
+               "technologies": [{"name": "Laravel", "version": "12.3.0"}]}]},
   "mysql": {"version": "8.0.39",
     "databases": [{"name": "shop_prod", "size_bytes": 1048576}],
     "users": [{"user": "shop", "host": "localhost"}],
     "grants": [{"user": "shop", "host": "localhost", "database": "shop_prod", "privileges": ["SELECT","INSERT"], "global": false}]},
+  "node": {"apps": [{"name": "api", "version": "1.4.0", "node_version": "20.18.0",
+             "listen": [{"address": "127.0.0.1", "port": 3000}], "user": "api", "group": "api",
+             "app_dir": "/srv/api", "process_manager": "systemd:api.service",
+             "technologies": [{"name": "Express", "version": "4.21.1"}]}]},
   "errors": [{"collector": "mysql", "message": "…"}]
 }
 ```
 
-Si Apache est absent, `apache` vaut `null`. Si MySQL est absent, `mysql` vaut `null`.
+Si Apache est absent, `apache` vaut `null`. Si MySQL est absent, `mysql` vaut `null`. `technologies` et `node` sont apparus avec l'agent 0.2.0 : le central les accepte absents (agents 0.1.0), sans changer `schema_version`.
 
 ### 4.6 Packaging
 
@@ -155,7 +168,8 @@ Lors de l'enrôlement, le `machine_id` est enregistré sur le serveur. Ensuite, 
 - `snapshots` : server_id, received_at, source_ip, schema_version, payload (json), error_count, warnings (json). Rétention de 30 jours, purgés par une commande planifiée.
 - État courant, remplacé à chaque réception dans une transaction :
   - `server_ips` (server_id, interface, address, prefix)
-  - `sites` (server_id, server_name, aliases json, port, https, cert_expires_at, type, document_root, app_dir, upstream, php_version, system_user, system_group, owner_user, owner_group, process_manager, config_file, partial)
+  - `sites` (server_id, server_name, aliases json, port, https, cert_expires_at, type, document_root, app_dir, upstream, php_version, system_user, system_group, owner_user, owner_group, process_manager, config_file, partial, technologies json, node_app_id nullable)
+  - `node_apps` (server_id, name, version, node_version, listen json, user, group, app_dir, process_manager, technologies json). Un site `node` est relié à l'application qui écoute sur le port de son `upstream`.
   - `site_db_refs` (site_id, db_name, db_user, db_host, source, database_id nullable, db_user_id nullable, resolution `local`/`remote`/`unresolved`)
   - `databases` (server_id, name, size_bytes)
   - `db_users` (server_id, user, host)

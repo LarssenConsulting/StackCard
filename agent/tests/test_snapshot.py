@@ -79,14 +79,35 @@ class CollectApacheTest(unittest.TestCase):
             build_context=lambda: None,
             classify=classify,
             find_db_refs=lambda app_dir: [{"db_name": "ok_db", "source": app_dir}],
+            detect_technologies=lambda app_dir: [{"name": "Laravel", "version": "12.3.0"}],
         )
         self.assertEqual(result["version"], "Apache/2.4.58 (Ubuntu)")
         self.assertEqual(
             result["sites"],
             [{"server_name": "ok.example.com", "app_dir": "/srv/ok",
-              "db_refs": [{"db_name": "ok_db", "source": "/srv/ok"}]}],
+              "db_refs": [{"db_name": "ok_db", "source": "/srv/ok"}],
+              "technologies": [{"name": "Laravel", "version": "12.3.0"}]}],
         )
         self.assertEqual(errors, [{"collector": "apache", "message": "bad.example.com: ValueError: weird vhost"}])
+
+    def test_technologies_are_read_once_per_directory(self):
+        vhosts = [{"server_name": "shop", "port": 80}, {"server_name": "shop", "port": 443}]
+        calls = []
+        result = snapshot.collect_apache(
+            errors=[],
+            has_apache=lambda: True,
+            runner=lambda cmd, **kw: "",
+            load_vhosts=lambda: vhosts,
+            build_context=lambda: None,
+            classify=lambda vhost, ctx: dict(vhost, app_dir="/srv/shop"),
+            find_db_refs=lambda app_dir: [],
+            detect_technologies=lambda app_dir: calls.append(app_dir) or [],
+        )
+        self.assertEqual(calls, ["/srv/shop"])
+        self.assertEqual([s["technologies"] for s in result["sites"]], [[], []])
+
+    def test_node_is_a_default_collector(self):
+        self.assertIn("node", snapshot.default_collectors([]))
 
 
 if __name__ == "__main__":

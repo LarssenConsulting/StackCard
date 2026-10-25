@@ -1,0 +1,879 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-10-25T08:00:00Z",
+  "agent_version": "0.2.0",
+  "server": {
+    "hostname": "demo-web01",
+    "fqdn": "demo-web01.example.lan",
+    "machine_id": "demo-web01",
+    "primary_ip": "10.0.0.50",
+    "os": "Ubuntu 24.04.1 LTS",
+    "kernel": "6.8.0-45-generic",
+    "virtualization": "kvm",
+    "interfaces": [
+      {
+        "name": "eth0",
+        "addresses": [
+          "10.0.0.50/24"
+        ]
+      }
+    ]
+  },
+  "apache": {
+    "version": "Apache/2.4.58 (Ubuntu)",
+    "sites": [
+      {
+        "server_name": "blog.example.com",
+        "aliases": [
+          "www.blog.example.com"
+        ],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/blog.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "blog.example.com",
+        "aliases": [
+          "www.blog.example.com"
+        ],
+        "cert_expires_at": "2027-03-01T00:00:00Z",
+        "upstream": null,
+        "php_version": "8.1",
+        "system_user": "blog",
+        "system_group": "blog",
+        "owner_user": "blog",
+        "owner_group": "www-data",
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/blog.example.com.conf",
+        "partial": false,
+        "db_refs": [
+          {
+            "db_name": "blog_wp",
+            "db_user": "blog",
+            "db_host": "localhost",
+            "source": "/home/blog/public_html/wp-config.php"
+          }
+        ],
+        "technologies": [
+          {
+            "name": "WordPress",
+            "version": "6.6.2"
+          }
+        ],
+        "port": 443,
+        "https": true,
+        "type": "php-fpm",
+        "document_root": "/home/blog/public_html",
+        "app_dir": "/home/blog/public_html"
+      },
+      {
+        "server_name": "crm.example.com",
+        "aliases": [
+          "www.crm.example.com"
+        ],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/crm.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "crm.example.com",
+        "aliases": [
+          "www.crm.example.com"
+        ],
+        "cert_expires_at": "2027-03-01T00:00:00Z",
+        "upstream": null,
+        "php_version": "8.4",
+        "system_user": "crm",
+        "system_group": "crm",
+        "owner_user": "crm",
+        "owner_group": "www-data",
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/crm.example.com.conf",
+        "partial": false,
+        "db_refs": [
+          {
+            "db_name": "crm",
+            "db_user": "crm",
+            "db_host": "127.0.0.1",
+            "source": "/home/crm/app/.env"
+          }
+        ],
+        "technologies": [
+          {
+            "name": "Laravel",
+            "version": "12.3.0"
+          },
+          {
+            "name": "Filament",
+            "version": "4.1.2"
+          },
+          {
+            "name": "Livewire",
+            "version": "3.5.12"
+          }
+        ],
+        "port": 443,
+        "https": true,
+        "type": "php-fpm",
+        "document_root": "/home/crm/app/public",
+        "app_dir": "/home/crm/app/public"
+      },
+      {
+        "server_name": "factures.example.com",
+        "aliases": [
+          "www.factures.example.com"
+        ],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/factures.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "factures.example.com",
+        "aliases": [
+          "www.factures.example.com"
+        ],
+        "cert_expires_at": "2027-03-01T00:00:00Z",
+        "upstream": null,
+        "php_version": "8.3",
+        "system_user": "factures",
+        "system_group": "factures",
+        "owner_user": "factures",
+        "owner_group": "www-data",
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/factures.example.com.conf",
+        "partial": false,
+        "db_refs": [
+          {
+            "db_name": "factures",
+            "db_user": "factures",
+            "db_host": "localhost",
+            "source": "/home/factures/app/.env.local"
+          }
+        ],
+        "technologies": [
+          {
+            "name": "Symfony",
+            "version": "7.1.5"
+          }
+        ],
+        "port": 443,
+        "https": true,
+        "type": "php-fpm",
+        "document_root": "/home/factures/app/public",
+        "app_dir": "/home/factures/app/public"
+      },
+      {
+        "server_name": "intranet.example.com",
+        "aliases": [
+          "www.intranet.example.com"
+        ],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/intranet.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "intranet.example.com",
+        "aliases": [
+          "www.intranet.example.com"
+        ],
+        "cert_expires_at": "2026-11-05T00:00:00Z",
+        "upstream": null,
+        "php_version": "8.2",
+        "system_user": "intranet",
+        "system_group": "intranet",
+        "owner_user": "intranet",
+        "owner_group": "www-data",
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/intranet.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [
+          {
+            "name": "Drupal",
+            "version": "10.3.6"
+          }
+        ],
+        "port": 443,
+        "https": true,
+        "type": "php-fpm",
+        "document_root": "/home/intranet/web",
+        "app_dir": "/home/intranet/web"
+      },
+      {
+        "server_name": "cloud.example.com",
+        "aliases": [
+          "www.cloud.example.com"
+        ],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/cloud.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "cloud.example.com",
+        "aliases": [
+          "www.cloud.example.com"
+        ],
+        "cert_expires_at": "2027-03-01T00:00:00Z",
+        "upstream": null,
+        "php_version": "8.3",
+        "system_user": "cloud",
+        "system_group": "cloud",
+        "owner_user": "cloud",
+        "owner_group": "www-data",
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/cloud.example.com.conf",
+        "partial": false,
+        "db_refs": [
+          {
+            "db_name": "nextcloud",
+            "db_user": "cloud",
+            "db_host": "localhost",
+            "source": "/home/cloud/nextcloud/.env"
+          }
+        ],
+        "technologies": [
+          {
+            "name": "Nextcloud",
+            "version": "29.0.8"
+          }
+        ],
+        "port": 443,
+        "https": true,
+        "type": "php-fpm",
+        "document_root": "/home/cloud/nextcloud",
+        "app_dir": "/home/cloud/nextcloud"
+      },
+      {
+        "server_name": "boutique.example.com",
+        "aliases": [
+          "www.boutique.example.com"
+        ],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/boutique.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "boutique.example.com",
+        "aliases": [
+          "www.boutique.example.com"
+        ],
+        "cert_expires_at": "2027-03-01T00:00:00Z",
+        "upstream": null,
+        "php_version": "7.4",
+        "system_user": "boutique",
+        "system_group": "boutique",
+        "owner_user": "boutique",
+        "owner_group": "www-data",
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/boutique.example.com.conf",
+        "partial": false,
+        "db_refs": [
+          {
+            "db_name": "presta",
+            "db_user": "boutique",
+            "db_host": "localhost",
+            "source": "/home/boutique/public_html/.env"
+          }
+        ],
+        "technologies": [
+          {
+            "name": "PrestaShop",
+            "version": "1.7.8.11"
+          }
+        ],
+        "port": 443,
+        "https": true,
+        "type": "php-fpm",
+        "document_root": "/home/boutique/public_html",
+        "app_dir": "/home/boutique/public_html"
+      },
+      {
+        "server_name": "plaquette.example.com",
+        "aliases": [
+          "www.plaquette.example.com"
+        ],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/plaquette.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "plaquette.example.com",
+        "aliases": [
+          "www.plaquette.example.com"
+        ],
+        "cert_expires_at": "2027-03-01T00:00:00Z",
+        "upstream": null,
+        "php_version": null,
+        "system_user": "plaquette",
+        "system_group": "plaquette",
+        "owner_user": "plaquette",
+        "owner_group": "www-data",
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/plaquette.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 443,
+        "https": true,
+        "type": "static",
+        "document_root": "/home/plaquette/public_html",
+        "app_dir": "/home/plaquette/public_html"
+      },
+      {
+        "server_name": "shop.example.com",
+        "aliases": [
+          "www.shop.example.com"
+        ],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/shop.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "shop.example.com",
+        "aliases": [
+          "www.shop.example.com"
+        ],
+        "cert_expires_at": "2027-03-01T00:00:00Z",
+        "upstream": "http://127.0.0.1:3000/",
+        "php_version": null,
+        "system_user": "front",
+        "system_group": "front",
+        "owner_user": "front",
+        "owner_group": "front",
+        "process_manager": "systemd:shop-front.service",
+        "config_file": "/etc/apache2/sites-available/shop.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [
+          {
+            "name": "Next.js",
+            "version": "15.0.3"
+          }
+        ],
+        "port": 443,
+        "https": true,
+        "type": "node",
+        "document_root": null,
+        "app_dir": "/home/front/shop"
+      },
+      {
+        "server_name": "api.example.com",
+        "aliases": [],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/api.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "api.example.com",
+        "aliases": [],
+        "cert_expires_at": "2027-03-01T00:00:00Z",
+        "upstream": "http://127.0.0.1:3001/",
+        "php_version": null,
+        "system_user": "api",
+        "system_group": "api",
+        "owner_user": "api",
+        "owner_group": "api",
+        "process_manager": "systemd:api.service",
+        "config_file": "/etc/apache2/sites-available/api.example.com.conf",
+        "partial": false,
+        "db_refs": [
+          {
+            "db_name": "api",
+            "db_user": "api",
+            "db_host": "127.0.0.1",
+            "source": "/srv/api/.env"
+          }
+        ],
+        "technologies": [
+          {
+            "name": "NestJS",
+            "version": "10.4.6"
+          },
+          {
+            "name": "Express",
+            "version": "4.21.1"
+          }
+        ],
+        "port": 443,
+        "https": true,
+        "type": "node",
+        "document_root": null,
+        "app_dir": "/srv/api"
+      },
+      {
+        "server_name": "cms.example.com",
+        "aliases": [
+          "www.cms.example.com"
+        ],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/cms.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "cms.example.com",
+        "aliases": [
+          "www.cms.example.com"
+        ],
+        "cert_expires_at": "2027-03-01T00:00:00Z",
+        "upstream": "http://localhost:1337/",
+        "php_version": null,
+        "system_user": "cms",
+        "system_group": "cms",
+        "owner_user": "cms",
+        "owner_group": "cms",
+        "process_manager": "pm2",
+        "config_file": "/etc/apache2/sites-available/cms.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [
+          {
+            "name": "Strapi",
+            "version": "5.1.0"
+          }
+        ],
+        "port": 443,
+        "https": true,
+        "type": "node",
+        "document_root": null,
+        "app_dir": "/home/cms/strapi"
+      },
+      {
+        "server_name": "docs.example.com",
+        "aliases": [
+          "www.docs.example.com"
+        ],
+        "cert_expires_at": null,
+        "upstream": null,
+        "php_version": null,
+        "system_user": null,
+        "system_group": null,
+        "owner_user": null,
+        "owner_group": null,
+        "process_manager": null,
+        "config_file": "/etc/apache2/sites-available/docs.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [],
+        "port": 80,
+        "https": false,
+        "type": "static",
+        "document_root": null,
+        "app_dir": null
+      },
+      {
+        "server_name": "docs.example.com",
+        "aliases": [
+          "www.docs.example.com"
+        ],
+        "cert_expires_at": "2027-03-01T00:00:00Z",
+        "upstream": "http://127.0.0.1:3002/",
+        "php_version": null,
+        "system_user": "docs",
+        "system_group": "docs",
+        "owner_user": "docs",
+        "owner_group": "docs",
+        "process_manager": "pm2",
+        "config_file": "/etc/apache2/sites-available/docs.example.com.conf",
+        "partial": false,
+        "db_refs": [],
+        "technologies": [
+          {
+            "name": "Nuxt",
+            "version": "3.13.2"
+          }
+        ],
+        "port": 443,
+        "https": true,
+        "type": "node",
+        "document_root": null,
+        "app_dir": "/home/docs/site"
+      }
+    ]
+  },
+  "mysql": {
+    "version": "10.11.8-MariaDB",
+    "databases": [
+      {
+        "name": "blog_wp",
+        "size_bytes": 52428800
+      },
+      {
+        "name": "crm",
+        "size_bytes": 8388608
+      },
+      {
+        "name": "factures",
+        "size_bytes": 4194304
+      },
+      {
+        "name": "nextcloud",
+        "size_bytes": 734003200
+      },
+      {
+        "name": "presta",
+        "size_bytes": 157286400
+      },
+      {
+        "name": "api",
+        "size_bytes": 2097152
+      },
+      {
+        "name": "old_site",
+        "size_bytes": 0
+      }
+    ],
+    "users": [
+      {
+        "user": "blog",
+        "host": "localhost"
+      },
+      {
+        "user": "crm",
+        "host": "127.0.0.1"
+      },
+      {
+        "user": "factures",
+        "host": "localhost"
+      },
+      {
+        "user": "cloud",
+        "host": "localhost"
+      },
+      {
+        "user": "boutique",
+        "host": "localhost"
+      },
+      {
+        "user": "api",
+        "host": "127.0.0.1"
+      },
+      {
+        "user": "root",
+        "host": "localhost"
+      }
+    ],
+    "grants": [
+      {
+        "user": "blog",
+        "host": "localhost",
+        "database": "blog_wp",
+        "privileges": [
+          "ALL PRIVILEGES"
+        ],
+        "global": false
+      },
+      {
+        "user": "crm",
+        "host": "127.0.0.1",
+        "database": "crm",
+        "privileges": [
+          "ALL PRIVILEGES"
+        ],
+        "global": false
+      },
+      {
+        "user": "factures",
+        "host": "localhost",
+        "database": "factures",
+        "privileges": [
+          "ALL PRIVILEGES"
+        ],
+        "global": false
+      },
+      {
+        "user": "cloud",
+        "host": "localhost",
+        "database": "nextcloud",
+        "privileges": [
+          "ALL PRIVILEGES"
+        ],
+        "global": false
+      },
+      {
+        "user": "boutique",
+        "host": "localhost",
+        "database": "presta",
+        "privileges": [
+          "ALL PRIVILEGES"
+        ],
+        "global": false
+      },
+      {
+        "user": "api",
+        "host": "127.0.0.1",
+        "database": "api",
+        "privileges": [
+          "ALL PRIVILEGES"
+        ],
+        "global": false
+      },
+      {
+        "user": "root",
+        "host": "localhost",
+        "database": null,
+        "privileges": [
+          "ALL PRIVILEGES"
+        ],
+        "global": true
+      }
+    ]
+  },
+  "node": {
+    "apps": [
+      {
+        "name": "shop-front",
+        "version": "2.3.0",
+        "node_version": "20.18.0",
+        "listen": [
+          {
+            "address": "127.0.0.1",
+            "port": 3000
+          }
+        ],
+        "user": "front",
+        "group": "front",
+        "app_dir": "/home/front/shop",
+        "process_manager": "systemd:shop-front.service",
+        "technologies": [
+          {
+            "name": "Next.js",
+            "version": "15.0.3"
+          }
+        ]
+      },
+      {
+        "name": "@demo/api",
+        "version": "1.8.2",
+        "node_version": "20.18.0",
+        "listen": [
+          {
+            "address": "127.0.0.1",
+            "port": 3001
+          },
+          {
+            "address": "::1",
+            "port": 3001
+          }
+        ],
+        "user": "api",
+        "group": "api",
+        "app_dir": "/srv/api",
+        "process_manager": "systemd:api.service",
+        "technologies": [
+          {
+            "name": "NestJS",
+            "version": "10.4.6"
+          },
+          {
+            "name": "Express",
+            "version": "4.21.1"
+          }
+        ]
+      },
+      {
+        "name": "cms",
+        "version": "0.1.0",
+        "node_version": "18.20.4",
+        "listen": [
+          {
+            "address": "0.0.0.0",
+            "port": 1337
+          }
+        ],
+        "user": "cms",
+        "group": "cms",
+        "app_dir": "/home/cms/strapi",
+        "process_manager": "pm2",
+        "technologies": [
+          {
+            "name": "Strapi",
+            "version": "5.1.0"
+          }
+        ]
+      },
+      {
+        "name": "docs",
+        "version": "1.0.0",
+        "node_version": "22.11.0",
+        "listen": [
+          {
+            "address": "127.0.0.1",
+            "port": 3002
+          }
+        ],
+        "user": "docs",
+        "group": "docs",
+        "app_dir": "/home/docs/site",
+        "process_manager": "pm2",
+        "technologies": [
+          {
+            "name": "Nuxt",
+            "version": "3.13.2"
+          }
+        ]
+      },
+      {
+        "name": "mailer-worker",
+        "version": "0.4.1",
+        "node_version": "20.18.0",
+        "listen": [
+          {
+            "address": "0.0.0.0",
+            "port": 4000
+          }
+        ],
+        "user": "worker",
+        "group": "worker",
+        "app_dir": "/home/worker/mailer",
+        "process_manager": "systemd:mailer.service",
+        "technologies": [
+          {
+            "name": "Fastify",
+            "version": "5.0.0"
+          }
+        ]
+      }
+    ]
+  },
+  "errors": []
+}

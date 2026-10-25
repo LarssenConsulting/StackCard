@@ -41,6 +41,11 @@ class Server extends Model
         return $this->hasMany(Site::class);
     }
 
+    public function nodeApps(): HasMany
+    {
+        return $this->hasMany(NodeApp::class);
+    }
+
     public function databases(): HasMany
     {
         return $this->hasMany(Database::class);

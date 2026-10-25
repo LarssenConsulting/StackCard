@@ -20,13 +20,15 @@ class Site extends Model
     protected $fillable = [
         'server_id', 'server_name', 'aliases', 'port', 'https', 'cert_expires_at', 'type',
         'document_root', 'app_dir', 'upstream', 'php_version', 'system_user', 'system_group',
-        'owner_user', 'owner_group', 'process_manager', 'config_file', 'partial',
+        'owner_user', 'owner_group', 'process_manager', 'config_file', 'partial', 'technologies',
+        'node_app_id',
     ];
 
     protected function casts(): array
     {
         return [
             'aliases' => 'array',
+            'technologies' => 'array',
             'https' => 'boolean',
             'partial' => 'boolean',
             'cert_expires_at' => 'datetime',
@@ -65,9 +67,23 @@ class Site extends Model
             ->implode(', ');
     }
 
+    /** ["Laravel 12.3.0", "Filament"] from the [{name, version}] list an agent reports. */
+    public static function technologyLabels(?array $technologies): array
+    {
+        return array_map(
+            fn (array $tech) => trim($tech['name'].' '.($tech['version'] ?? '')),
+            $technologies ?? [],
+        );
+    }
+
     public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class);
+    }
+
+    public function nodeApp(): BelongsTo
+    {
+        return $this->belongsTo(NodeApp::class);
     }
 
     public function dbRefs(): HasMany

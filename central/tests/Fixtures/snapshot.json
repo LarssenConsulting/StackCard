@@ -22,7 +22,8 @@
         "https": false, "cert_expires_at": null, "type": "static", "document_root": null,
         "app_dir": null, "upstream": null, "php_version": null, "system_user": null,
         "system_group": null, "owner_user": null, "owner_group": null, "process_manager": null,
-        "config_file": "/etc/apache2/sites-enabled/shop.conf", "partial": false, "db_refs": []
+        "config_file": "/etc/apache2/sites-enabled/shop.conf", "partial": false, "db_refs": [],
+        "technologies": []
       },
       {
         "server_name": "shop.example.com", "aliases": ["www.shop.example.com"], "port": 443,
@@ -33,7 +34,8 @@
         "config_file": "/etc/apache2/sites-enabled/shop.conf", "partial": false,
         "db_refs": [
           {"db_name": "shop_prod", "db_user": "shop", "db_host": "localhost", "source": "/var/www/shop/.env"}
-        ]
+        ],
+        "technologies": [{"name": "Laravel", "version": "12.3.0"}, {"name": "Filament", "version": "4.1.2"}]
       },
       {
         "server_name": "api.example.com", "aliases": [], "port": 443, "https": true,
@@ -44,7 +46,8 @@
         "config_file": "/etc/apache2/sites-enabled/api.conf", "partial": false,
         "db_refs": [
           {"db_name": "api_prod", "db_user": "api", "db_host": "10.0.0.20", "source": "/srv/api/.env"}
-        ]
+        ],
+        "technologies": [{"name": "Express", "version": "4.21.1"}]
       }
     ]
   },
@@ -62,6 +65,23 @@
     "grants": [
       {"user": "shop", "host": "localhost", "database": "shop_prod", "privileges": ["SELECT", "INSERT"], "global": false},
       {"user": "root", "host": "localhost", "database": null, "privileges": ["ALL PRIVILEGES"], "global": true}
+    ]
+  },
+  "node": {
+    "apps": [
+      {
+        "name": "api", "version": "1.4.0", "node_version": "20.18.0",
+        "listen": [{"address": "127.0.0.1", "port": 3000}],
+        "user": "app-api", "group": "app-api", "app_dir": "/srv/api",
+        "process_manager": "systemd:api.service",
+        "technologies": [{"name": "Express", "version": "4.21.1"}]
+      },
+      {
+        "name": null, "version": null, "node_version": "22.11.0",
+        "listen": [{"address": "0.0.0.0", "port": 4000}],
+        "user": "worker", "group": "worker", "app_dir": "/home/worker/app",
+        "process_manager": "pm2", "technologies": []
+      }
     ]
   },
   "errors": [

@@ -8,6 +8,7 @@ use App\Filament\Resources\Servers\Pages\ListServers;
 use App\Filament\Resources\Servers\Pages\ViewServer;
 use App\Filament\Resources\Servers\RelationManagers\DatabasesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\DbUsersRelationManager;
+use App\Filament\Resources\Servers\RelationManagers\NodeAppsRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SitesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SnapshotsRelationManager;
 use App\Filament\Resources\Servers\Schemas\ServerForm;
@@ -53,10 +54,17 @@ class ServerResource extends Resource
     {
         return [
             SitesRelationManager::class,
+            NodeAppsRelationManager::class,
             DatabasesRelationManager::class,
             DbUsersRelationManager::class,
             SnapshotsRelationManager::class,
         ];
+    }
+
+    /** Tab key of a relation manager on the server sheet, for links (?relation=…). */
+    public static function relationIndex(string $manager): string
+    {
+        return (string) array_search($manager, static::getRelations(), true);
     }
 
     public static function getPages(): array

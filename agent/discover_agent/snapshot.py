@@ -3,7 +3,7 @@
 import socket
 
 from discover_agent import __version__, util
-from discover_agent.collectors import apache, dbrefs, mysql, server, sites
+from discover_agent.collectors import apache, dbrefs, mysql, node, server, sites, techs
 
 SCHEMA_VERSION = 1
 
@@ -22,6 +22,7 @@ def collect_apache(
     build_context=None,
     classify=sites.classify,
     find_db_refs=dbrefs.find_db_refs,
+    detect_technologies=techs.detect_technologies,
 ):
     if not has_apache():
         return None
@@ -32,11 +33,16 @@ def collect_apache(
     except util.CommandError:
         version = None
     context = build_context()
-    collected = []
+    collected, technologies = [], {}
     for vhost in load_vhosts():
         try:
             site = classify(vhost, context)
             site["db_refs"] = find_db_refs(site.get("app_dir"))
+            # The HTTP and HTTPS vhosts of a site share a directory: read its lock files once.
+            app_dir = site.get("app_dir")
+            if app_dir not in technologies:
+                technologies[app_dir] = detect_technologies(app_dir)
+            site["technologies"] = technologies[app_dir]
         except Exception as exc:  # one odd vhost must not hide the others
             errors.append({"collector": "apache", "message": f"{vhost.get('server_name')}: {_describe(exc)}"})
             continue
@@ -57,6 +63,7 @@ def default_collectors(errors):
         "server": server.collect_server,
         "apache": lambda: collect_apache(errors),
         "mysql": mysql.collect_mysql,
+        "node": node.collect_node,
     }
 
 
