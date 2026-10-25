@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Models\NodeApp;
 use App\Models\Server;
 use App\Models\Snapshot;
 use Illuminate\Support\Arr;
@@ -94,18 +95,26 @@ class IngestSnapshot
         }
     }
 
-    /** @return array<int, int> node app id by listening port */
+    /**
+     * Node sites proxy to a loopback address (the agent only types them `node` then), so only an
+     * app listening on loopback or on every address can serve them.
+     *
+     * @return array<int, int> node app id by port, for ports exactly one such app listens on
+     */
     private function storeNodeApps(Server $server, array $apps): array
     {
-        $byPort = [];
+        $candidates = [];
         foreach ($apps as $data) {
             $app = $server->nodeApps()->create($data);
-            foreach ($app->ports() as $port) {
-                $byPort[$port] ??= $app->id;
+            foreach ($app->listen as $socket) {
+                if (in_array($socket['address'], [...NodeApp::LOOPBACK, ...NodeApp::WILDCARD], true)) {
+                    $candidates[$socket['port']][$app->id] = $app->id;
+                }
             }
         }
 
-        return $byPort;
+        // Two apps on the same port (e.g. 127.0.0.1 and ::1): which one Apache reaches is unknown.
+        return array_map(fn (array $ids) => array_key_first($ids), array_filter($candidates, fn (array $ids) => count($ids) === 1));
     }
 
     private function storeSites(Server $server, array $sites, array $nodeApps): void

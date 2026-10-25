@@ -12,6 +12,9 @@ class NodeApp extends Model
     /** Addresses that only accept connections from the server itself. */
     public const LOOPBACK = ['127.0.0.1', '::1', 'localhost'];
 
+    /** Addresses meaning "every interface", as `ss` prints them. */
+    public const WILDCARD = ['0.0.0.0', '::', '*'];
+
     protected $fillable = [
         'server_id', 'name', 'version', 'node_version', 'listen', 'user', 'group', 'app_dir',
         'process_manager', 'technologies',

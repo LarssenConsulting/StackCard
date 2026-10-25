@@ -244,6 +244,33 @@ it('links a Node site to the app listening on its proxy port', function () {
         ->and(NodeApp::where('name', null)->sole()->sites)->toBeEmpty();
 });
 
+it('links a Node site only to an app its loopback proxy can reach, and only when it is the only one', function () {
+    [$server, $token] = enrolledServer();
+    $app = fn (string $name, string $address) => [
+        'name' => $name, 'version' => null, 'node_version' => null,
+        'listen' => [['address' => $address, 'port' => 3000]], 'user' => $name, 'group' => $name,
+        'app_dir' => "/srv/{$name}", 'process_manager' => null, 'technologies' => [],
+    ];
+    $apiNodeAppId = fn () => $server->sites()->where('server_name', 'api.example.com')->sole()->node_app_id;
+
+    // An app bound to a LAN address only is not what http://127.0.0.1:3000 reaches.
+    sendInventory($this, $token, snapshotFixture(fn ($s) => array_merge($s, ['node' => ['apps' => [
+        $app('lan-only', '10.0.0.11'), $app('local', '127.0.0.1'),
+    ]]])))->assertOk();
+    expect(NodeApp::find($apiNodeAppId())->name)->toBe('local');
+
+    // Two apps Apache could reach on that port: no guess.
+    sendInventory($this, $token, snapshotFixture(fn ($s) => array_merge($s, ['node' => ['apps' => [
+        $app('v4', '127.0.0.1'), $app('v6', '::1'),
+    ]]])))->assertOk();
+    expect($apiNodeAppId())->toBeNull();
+
+    sendInventory($this, $token, snapshotFixture(fn ($s) => array_merge($s, ['node' => ['apps' => [
+        $app('everywhere', '0.0.0.0'),
+    ]]])))->assertOk();
+    expect(NodeApp::find($apiNodeAppId())->name)->toBe('everywhere');
+});
+
 it('replaces the Node apps on each snapshot', function () {
     [$server, $token] = enrolledServer();
     sendInventory($this, $token, snapshotFixture())->assertOk();
