@@ -1,8 +1,9 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Met à jour le central : git pull, dépendances si composer.lock a changé, migrations, caches.
 # À lancer en tant que propriétaire des fichiers, jamais en root (des caches appartenant à root
 # donneraient une erreur 500) : sudo -u <propriétaire> /chemin/vers/central/deploy.sh
-set -euo pipefail
+# POSIX sh : fonctionne aussi lancé par « sh deploy.sh ».
+set -eu
 
 main() {
     if [ "$(id -u)" -eq 0 ]; then
