@@ -184,7 +184,11 @@ avec `--reuse-key`).
 ## Mise à jour
 
 ```bash
-cd /var/www/discover && sudo git pull
-cd central && composer install --no-dev --optimize-autoloader
-php artisan migrate --force && php artisan filament:optimize && php artisan optimize
+sudo -u <propriétaire du dépôt> /var/www/discover/central/deploy.sh
 ```
+
+Le script fait `git pull`, lance `composer install` seulement si `composer.lock` a changé, applique
+les migrations (« Nothing to migrate » s'il n'y en a pas) et reconstruit les caches avec
+`php artisan optimize` (qui inclut `filament:optimize`). Lancez-le en tant que propriétaire des
+fichiers, **jamais en root** : des caches appartenant à root provoquent une erreur 500 (le script
+refuse de tourner en root).
