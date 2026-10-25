@@ -23,8 +23,10 @@ use App\Models\Server;
 use App\Models\Site;
 use App\Models\SiteDbRef;
 use App\Models\User;
+use App\Support\AgentRelease;
 use Filament\Facades\Filament;
 use Filament\Notifications\NotificationMailbox;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -48,6 +50,33 @@ it('lists servers with their address and site count', function () {
     Livewire::test(ListServers::class)
         ->assertCanSeeTableRecords([$this->web])
         ->assertSee('10.0.0.11');
+});
+
+it('shows the agent version with the newer published one', function () {
+    config(['discover.agent_version_url' => 'https://releases.test/agent/version.txt']);
+    Http::fake(['releases.test/*' => Http::response("0.2.0\n")]);
+
+    Livewire::test(ListServers::class)->assertSee('0.1.0 (0.2.0 disponible)');
+    Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])->assertSee('0.1.0 (0.2.0 disponible)');
+    Http::assertSentCount(1);
+});
+
+it('shows only the agent version when it is up to date or the release is unreadable', function (string $body, int $status) {
+    config(['discover.agent_version_url' => 'https://releases.test/agent/version.txt']);
+    Http::fake(['releases.test/*' => Http::response($body, $status)]);
+
+    Livewire::test(ListServers::class)->assertSee('0.1.0')->assertDontSee('disponible');
+})->with([
+    'up to date' => ['0.1.0', 200],
+    'missing' => ['Not Found', 404],
+    'not a version' => ['<html>', 200],
+]);
+
+it('does not look for a newer agent without a version url', function () {
+    Http::fake();
+
+    expect(AgentRelease::describe('0.1.0'))->toBe('0.1.0');
+    Http::assertNothingSent();
 });
 
 it('creates a server from its name only', function () {

@@ -30,7 +30,11 @@ class BuildReleaseTest(unittest.TestCase):
             f"discover-agent_{__version__}_all.deb",
             "discover-agent_latest_all.deb",
             "discover-agent_latest_all.deb.sha256",
+            "version.txt",
         ]))
+
+    def test_version_file_holds_the_packaged_version(self):
+        self.assertEqual(read(os.path.join(self.out, "version.txt")), f"{__version__}\n".encode())
 
     def test_latest_is_the_versioned_package_with_a_matching_checksum(self):
         latest = read(os.path.join(self.out, "discover-agent_latest_all.deb"))

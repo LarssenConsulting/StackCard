@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Servers\Tables;
 
 use App\Filament\Resources\Servers\Schemas\ServerStatus;
 use App\Models\Server;
+use App\Support\AgentRelease;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -26,6 +27,11 @@ class ServersTable
                 TextColumn::make('os')->label('Système')->toggleable()->placeholder('—'),
                 TextColumn::make('sites_count')->label('Sites')->counts('sites')->sortable(),
                 TextColumn::make('databases_count')->label('Bases')->counts('databases')->sortable(),
+                TextColumn::make('agent_version')
+                    ->label('Agent')
+                    ->formatStateUsing(fn (string $state) => AgentRelease::describe($state))
+                    ->color(fn (?string $state) => AgentRelease::isOutdated($state) ? 'warning' : null)
+                    ->placeholder('—'),
                 TextColumn::make('last_seen_at')->label('Dernier envoi')->since()->sortable()->placeholder('jamais'),
                 TextColumn::make('status')
                     ->label('État')

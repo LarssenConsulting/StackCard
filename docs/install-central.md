@@ -58,6 +58,11 @@ affichées avec chaque jeton d'enrôlement. Le script d'installation de l'agent 
 dernière release GitHub (`https://github.com/LarssenConsulting/StackCard/releases/latest/download/install.sh`) ;
 pour un autre emplacement, ajoutez `DISCOVER_AGENT_INSTALL_URL=https://…/install.sh` (voir `install-agent.md`).
 
+La liste des serveurs affiche la version de chaque agent, suivie de « (x.y.z disponible) » quand une
+version plus récente est publiée. Le central lit pour cela `version.txt` à côté de `install.sh`
+(résultat gardé en cache 6 h) ; `DISCOVER_AGENT_VERSION_URL=` (vide) désactive cette vérification,
+par exemple si le central ne peut pas sortir sur Internet.
+
 ```bash
 php artisan migrate --force
 php artisan filament:optimize

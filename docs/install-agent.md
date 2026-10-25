@@ -9,7 +9,8 @@ central toutes les heures en HTTPS. Il n'ouvre aucun port et n'accepte aucune co
 Le dépôt public [LarssenConsulting/StackCard](https://github.com/LarssenConsulting/StackCard) publie
 l'agent par GitHub Actions (`.github/workflows/ci.yml`) : les tests tournent à chaque push, et un
 tag `agent-v<version>` crée une **release GitHub** avec `install.sh`, `discover-agent_<version>_all.deb`,
-`discover-agent_latest_all.deb` et son `.sha256`. Pour publier :
+`discover-agent_latest_all.deb`, son `.sha256` et `version.txt` (lu par le central pour signaler
+les agents à mettre à jour). Pour publier :
 
 ```bash
 # 1. augmenter __version__ dans agent/discover_agent/__init__.py, commiter, pousser

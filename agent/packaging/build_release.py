@@ -5,6 +5,7 @@
     discover-agent_<version>_all.deb      kept for pinning or rollback
     discover-agent_latest_all.deb         what install.sh downloads
     discover-agent_latest_all.deb.sha256  checked by install.sh before installing
+    version.txt                           the version, read by the central to flag outdated agents
 
 Published as a GitHub release by .github/workflows/ci.yml when an agent-v<version> tag is pushed.
 
@@ -35,6 +36,8 @@ def build(root=None):
         digest = hashlib.sha256(fh.read()).hexdigest()
     with open(latest + ".sha256", "w") as fh:
         fh.write(f"{digest}  {LATEST}\n")
+    with open(os.path.join(out, "version.txt"), "w") as fh:
+        fh.write(f"{build_deb.__version__}\n")
 
     script = os.path.join(out, "install.sh")
     shutil.copyfile(os.path.join(PACKAGING, "install.sh"), script)

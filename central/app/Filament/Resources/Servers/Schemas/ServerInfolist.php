@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Servers\Schemas;
 
 use App\Models\Server;
+use App\Support\AgentRelease;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -39,7 +40,11 @@ class ServerInfolist
                             ->color(fn (Server $record) => ServerStatus::color($record)),
                         TextEntry::make('last_seen_at')->label('Dernier envoi')->since()->placeholder('jamais'),
                         TextEntry::make('last_source_ip')->label('IP source du dernier envoi')->placeholder('—'),
-                        TextEntry::make('agent_version')->label('Version de l’agent')->placeholder('—'),
+                        TextEntry::make('agent_version')
+                            ->label('Version de l’agent')
+                            ->formatStateUsing(fn (string $state) => AgentRelease::describe($state))
+                            ->color(fn (?string $state) => AgentRelease::isOutdated($state) ? 'warning' : null)
+                            ->placeholder('—'),
                         TextEntry::make('machine_id')->label('machine-id')->placeholder('—'),
                     ]),
                 TextEntry::make('notes')->label('Notes')->placeholder('—')->columnSpanFull(),
