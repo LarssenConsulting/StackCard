@@ -21,6 +21,7 @@ EXES = {
 PROCS = {
     1234: {"user": "api", "group": "api", "cwd": "/srv/api", "process_manager": "systemd:api.service"},
     2222: {"user": "front", "group": "front", "cwd": "/home/front/app", "process_manager": "pm2"},
+    2223: {"user": "front", "group": "front", "cwd": "/home/front/app", "process_manager": "pm2"},
     3333: {"user": "web", "group": "web", "cwd": "/srv/web", "process_manager": "systemd:web.service"},
     900: {"user": "mysql", "group": "mysql", "cwd": "/", "process_manager": "systemd:mariadb.service"},
 }
@@ -84,8 +85,13 @@ class CollectNodeTest(unittest.TestCase):
 
 class ParsersTest(unittest.TestCase):
     def test_sockets(self):
-        self.assertEqual(node.parse_ss_sockets(SS)[2], ("0.0.0.0", 4000, [2222, 2223]))
-        self.assertEqual(node.parse_ss_sockets(SS)[1], ("::1", 3000, [1234]))
+        self.assertEqual(node.parse_ss_sockets(SS)[2], ("0.0.0.0", 4000, 2223))
+        self.assertEqual(node.parse_ss_sockets(SS)[1], ("::1", 3000, 1234))
+
+    def test_a_process_name_cannot_point_the_socket_at_another_pid(self):
+        # A process named 'x",pid=1234,fd=3)' tries to pass its port off as the api's.
+        line = 'LISTEN 0 511 0.0.0.0:6000 0.0.0.0:* users:(("x",pid=1234,fd=3),("",pid=6666,fd=9))\n'
+        self.assertEqual(node.parse_ss_sockets(line), [("0.0.0.0", 6000, 6666)])
 
     def test_versions(self):
         self.assertEqual(node.node_version_from_path("/usr/local/n/versions/node/18.20.4/bin/node"), "18.20.4")

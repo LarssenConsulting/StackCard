@@ -10,23 +10,22 @@ import re
 from discover_agent import util
 from discover_agent.collectors import sites, techs
 
-_SS_PROCESS = re.compile(r'\("([^"]*)",pid=(\d+)')
 _NODE_IN_PATH = re.compile(r"/v?(\d+\.\d+\.\d+)/bin/node(js)?$")
 _DPKG_VERSION = re.compile(r"^(?:\d+:)?(\d+(?:\.\d+){0,3})")
 SYSTEM_NODE = ("/usr/bin/node", "/usr/bin/nodejs", "/usr/local/bin/node")
 
 
 def parse_ss_sockets(text):
-    """`ss -Hltnp` -> [(address, port, [pid, ...])]"""
+    """`ss -Hltnp` -> [(address, port, pid)], pid read as sites.ss_owner_pid does."""
     sockets = []
     for line in text.splitlines():
         fields = line.split()
         if len(fields) < 4:
             continue
         address, _, port = fields[3].rpartition(":")
-        pids = [int(pid) for _, pid in _SS_PROCESS.findall(line)]
-        if port.isdigit() and pids:
-            sockets.append((address.strip("[]"), int(port), pids))
+        pid = sites.ss_owner_pid(line)
+        if port.isdigit() and pid:
+            sockets.append((address.strip("[]"), int(port), pid))
     return sockets
 
 
@@ -68,10 +67,9 @@ def collect_node(
         return system_version[0]
 
     apps = {}
-    for address, port, pids in sockets:
-        # Cluster workers share the socket: the first Node process stands for the app.
-        pid = next((p for p in pids if is_node(exe_of(p))), None)
-        info = proc_info(pid) if pid else None
+    for address, port, pid in sockets:
+        # Cluster workers share the socket and the app directory: any of them stands for the app.
+        info = proc_info(pid) if is_node(exe_of(pid)) else None
         if not info:
             continue
         key = (info["user"], info["cwd"], info["process_manager"])

@@ -65,8 +65,12 @@ class ParsersTest(unittest.TestCase):
         self.assertEqual(pools["/run/php/php8.1-fpm-www.sock"]["user"], "www-data")
         self.assertEqual(pools["127.0.0.1:9001"]["user"], "blog")
 
-    def test_ss_maps_port_to_first_pid(self):
-        self.assertEqual(sites.parse_ss(SS), {3000: 1234, 8080: 2222, 3306: 900})
+    def test_ss_maps_port_to_the_pid_ending_the_line(self):
+        self.assertEqual(sites.parse_ss(SS), {3000: 1234, 8080: 2223, 3306: 900})
+
+    def test_ss_process_name_cannot_forge_a_pid(self):
+        forged = 'LISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:(("a",pid=1,fd=3),("",pid=4242,fd=20))\n'
+        self.assertEqual(sites.parse_ss(forged), {3000: 4242})
 
     def test_cert_enddate(self):
         self.assertEqual(

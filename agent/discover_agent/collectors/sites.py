@@ -16,7 +16,16 @@ LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]", "0.0.0.0"}
 POOL_GLOB = "/etc/php/*/fpm/pool.d/*.conf"
 
 _PHP_VERSION = re.compile(r"/etc/php/(\d+\.\d+)/")
-_SS_PID = re.compile(r"pid=(\d+)")
+# ss prints process names unescaped, and a process picks its own name: one called
+# 'x",pid=1,fd=3)' would forge an entry. Only the end of the line is trustworthy, as
+# every name comes before its pid: keep the last pid, anchored to the closing "))".
+_SS_LAST_PID = re.compile(r"pid=(\d+),fd=\d+\)\)\s*$")
+
+
+def ss_owner_pid(line):
+    """The pid that really holds the socket of one `ss -Hltnp` line, or None."""
+    match = _SS_LAST_PID.search(line)
+    return int(match.group(1)) if match else None
 
 
 @dataclass
@@ -86,9 +95,9 @@ def parse_ss(text):
         if len(fields) < 4:
             continue
         port = fields[3].rsplit(":", 1)[-1]
-        pid = _SS_PID.search(line)
+        pid = ss_owner_pid(line)
         if port.isdigit() and pid and int(port) not in listeners:
-            listeners[int(port)] = int(pid.group(1))
+            listeners[int(port)] = pid
     return listeners
 
 
