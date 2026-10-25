@@ -131,6 +131,15 @@ class VhostTest(unittest.TestCase):
         _, block = apache.parse_vhosts_text(text)[0]
         self.assertEqual(block["aliases"], ["a.example.com", "b.example.com"])
 
+    def test_repeated_aliases_are_kept_once(self):
+        # Virtualmin may write the ServerName/ServerAlias lines twice in the same vhost.
+        text = (
+            "<VirtualHost *:443>\n    ServerAlias www.example.com\n"
+            "    ServerAlias www.example.com mail.example.com\n</VirtualHost>\n"
+        )
+        _, block = apache.parse_vhosts_text(text)[0]
+        self.assertEqual(block["aliases"], ["www.example.com", "mail.example.com"])
+
 
 class LoadVhostsTest(unittest.TestCase):
     def test_keeps_only_blocks_listed_by_apache2ctl(self):

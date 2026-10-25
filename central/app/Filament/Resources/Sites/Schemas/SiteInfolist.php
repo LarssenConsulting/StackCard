@@ -29,8 +29,12 @@ class SiteInfolist
                 Section::make('Site')
                     ->schema([
                         TextEntry::make('server_name')->label('Domaine')->placeholder('(sans ServerName)'),
-                        TextEntry::make('aliases')->label('Alias')->listWithLineBreaks()->placeholder('—'),
-                        TextEntry::make('port')->label('Port'),
+                        TextEntry::make('aliases')
+                            ->label('Alias')
+                            ->state(fn (Site $record) => array_values(array_unique($record->aliases)))
+                            ->listWithLineBreaks()
+                            ->placeholder('—'),
+                        TextEntry::make('ports')->label('Ports')->state(fn (Site $record) => $record->ports()),
                         IconEntry::make('https')->label('HTTPS')->boolean(),
                         TextEntry::make('cert_expires_at')->label('Expiration du certificat')->date('d/m/Y')->placeholder('—'),
                         TextEntry::make('type')->label('Type')->badge()

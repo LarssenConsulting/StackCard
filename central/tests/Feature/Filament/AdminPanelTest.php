@@ -66,7 +66,7 @@ it('shows a server sheet', function () {
 
 it('lists a server sites and snapshots in its tabs', function () {
     Livewire::test(SitesRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
-        ->assertCanSeeTableRecords($this->web->sites);
+        ->assertCanSeeTableRecords($this->web->sites()->primaryPerName()->get());
     Livewire::test(SnapshotsRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
         ->assertCanSeeTableRecords($this->web->snapshots);
     Livewire::test(DatabasesRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
@@ -103,7 +103,7 @@ it('revokes a server', function () {
 });
 
 it('finds a site by alias and filters by type', function () {
-    $shop = Site::where('server_name', 'shop.example.com')->get();
+    $shop = Site::where('server_name', 'shop.example.com')->primaryPerName()->get();
     $api = Site::where('server_name', 'api.example.com')->get();
 
     Livewire::test(ListSites::class)
@@ -115,6 +115,20 @@ it('finds a site by alias and filters by type', function () {
         ->filterTable('type', 'node')
         ->assertCanSeeTableRecords($api)
         ->assertCanNotSeeTableRecords($shop);
+});
+
+it('lists a site served on ports 80 and 443 once, as its HTTPS vhost', function () {
+    $https = Site::where('server_name', 'shop.example.com')->where('port', 443)->sole();
+    $http = Site::where('server_name', 'shop.example.com')->where('port', 80)->sole();
+    $https->update(['aliases' => ['www.shop.example.com', 'www.shop.example.com']]);
+
+    Livewire::test(ListSites::class)
+        ->assertCanSeeTableRecords([$https])
+        ->assertCanNotSeeTableRecords([$http])
+        ->assertTableColumnStateSet('ports', '80, 443', $https)
+        ->assertDontSee('www.shop.example.com, www.shop.example.com');
+    Livewire::test(ViewSite::class, ['record' => $https->getRouteKey()])
+        ->assertSee('80, 443');
 });
 
 it('shows the chain from a site to its database account', function () {

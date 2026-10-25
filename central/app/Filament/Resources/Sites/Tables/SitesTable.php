@@ -17,19 +17,19 @@ class SitesTable
     public static function configure(Table $table, bool $withServer = true): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['server', 'dbRefs']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->primaryPerName()->with(['server', 'dbRefs']))
             ->defaultSort('server_name')
             ->columns(array_values(array_filter([
                 TextColumn::make('server_name')
                     ->label('Domaine')
-                    ->description(fn (Site $record) => implode(', ', $record->aliases))
+                    ->description(fn (Site $record) => implode(', ', array_unique($record->aliases)))
                     ->searchable(query: fn (Builder $query, string $search) => $query->where(
                         fn (Builder $q) => $q->where('server_name', 'like', "%{$search}%")
                             ->orWhere('aliases', 'like', "%{$search}%")
                     ))
                     ->sortable()
                     ->placeholder('(sans ServerName)'),
-                TextColumn::make('port')->label('Port')->sortable(),
+                TextColumn::make('ports')->label('Ports')->state(fn (Site $record) => $record->ports()),
                 IconColumn::make('https')->label('HTTPS')->boolean(),
                 TextColumn::make('type')
                     ->label('Type')

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -30,6 +31,38 @@ class Site extends Model
             'partial' => 'boolean',
             'cert_expires_at' => 'datetime',
         ];
+    }
+
+    /**
+     * One vhost per site name and server: the HTTPS one, else the first. Apache (and Virtualmin)
+     * declare a vhost per port, so the same site would otherwise be listed for 80 and 443.
+     * Vhosts without ServerName are all kept.
+     */
+    public function scopePrimaryPerName(Builder $query): Builder
+    {
+        return $query->whereNotExists(fn ($other) => $other->selectRaw('1')
+            ->from('sites as other')
+            ->whereColumn('other.server_id', 'sites.server_id')
+            ->whereColumn('other.server_name', 'sites.server_name')
+            ->where(fn ($preferred) => $preferred->whereColumn('other.https', '>', 'sites.https')
+                ->orWhere(fn ($first) => $first->whereColumn('other.https', 'sites.https')
+                    ->whereColumn('other.id', '<', 'sites.id'))));
+    }
+
+    /** Ports of every vhost of this site name on this server, e.g. "80, 443". */
+    public function ports(): string
+    {
+        if ($this->server_name === null) {
+            return (string) $this->port;
+        }
+
+        return self::query()
+            ->where('server_id', $this->server_id)
+            ->where('server_name', $this->server_name)
+            ->orderBy('port')
+            ->pluck('port')
+            ->unique()
+            ->implode(', ');
     }
 
     public function server(): BelongsTo

@@ -105,7 +105,7 @@ def _apply_directive(block, name, args, location):
     if key == "servername" and args:
         block["server_name"] = args[0]
     elif key == "serveralias":
-        block["aliases"].extend(args)
+        block["aliases"].extend(a for a in args if a not in block["aliases"])
     elif key == "documentroot" and args:
         block["document_root"] = args[0]
     elif key == "sslengine" and args:
