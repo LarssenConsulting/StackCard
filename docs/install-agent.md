@@ -115,9 +115,14 @@ GRANT SELECT ON mysql.* TO 'discover'@'localhost';
 sudo install -m 0600 -o root -g root /dev/stdin /etc/discover-agent/mysql.cnf <<'EOF'
 [client]
 user=discover
-password=<mot de passe fort>
+password="<mot de passe fort>"
 EOF
 ```
+
+Gardez les guillemets autour du mot de passe : dans ce fichier, `#` commence un commentaire même
+en milieu de ligne, et un mot de passe qui en contient serait lu tronqué (« Access denied … using
+password: YES »). Évitez `"` et `\`, interprétés même entre guillemets ; le plus simple est un mot
+de passe alphanumérique, par exemple `openssl rand -base64 24 | tr -dc 'A-Za-z0-9'`.
 
 ## Dépannage
 
