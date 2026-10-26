@@ -155,7 +155,7 @@ case "$BASE" in
 esac
 [ "$(id -u)" = 0 ] || die "lancez le script en root (… | sudo sh)."
 for cmd in curl sha256sum dpkg dpkg-deb dpkg-query apt-get; do
-    command -v "$cmd" >/dev/null 2>&1 || die "commande $cmd introuvable (Ubuntu 24.04 attendu)."
+    command -v "$cmd" >/dev/null 2>&1 || die "commande $cmd introuvable (Ubuntu 22.04 ou 24.04 attendu)."
 done
 
 install_package

@@ -51,7 +51,7 @@ class BuildDebTest(unittest.TestCase):
         self.assertIn("Package: discover-agent\n", control)
         self.assertIn(f"Version: {__version__}\n", control)
         self.assertIn("Architecture: all\n", control)
-        self.assertIn("Depends: python3 (>= 3.12), iproute2, openssl\n", control)
+        self.assertIn("Depends: python3 (>= 3.10), iproute2, openssl\n", control)
         for script in ("./postinst", "./prerm", "./postrm"):
             self.assertEqual(modes[script], 0o755, script)
 

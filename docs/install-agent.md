@@ -1,6 +1,6 @@
 # Installer l'agent Discover
 
-L'agent tourne sur chaque serveur Ubuntu 24.04. Il est en Python (bibliothèque standard
+L'agent tourne sur chaque serveur Ubuntu 24.04 (ou 22.04). Il est en Python (bibliothèque standard
 uniquement), lit la configuration du serveur **sans rien modifier**, et envoie un inventaire au
 central toutes les heures en HTTPS. Il n'ouvre aucun port et n'accepte aucune commande du central.
 
@@ -14,8 +14,8 @@ les agents à mettre à jour). Pour publier :
 
 ```bash
 # 1. augmenter __version__ dans agent/discover_agent/__init__.py, commiter, pousser
-git tag agent-v0.3.0          # doit être égal à __version__, sinon la CI refuse
-git push origin agent-v0.3.0
+git tag agent-v0.3.1          # doit être égal à __version__, sinon la CI refuse
+git push origin agent-v0.3.1
 ```
 
 La release devient « latest » : `install.sh` et le paquet sont téléchargés depuis
@@ -36,7 +36,7 @@ curl -fsSL https://github.com/LarssenConsulting/StackCard/releases/latest/downlo
 ```
 
 Le script télécharge le paquet, vérifie son empreinte SHA-256, l'installe (dépendances
-`python3 (>= 3.12)`, `iproute2`, `openssl` comprises), puis demande :
+`python3 (>= 3.10)`, `iproute2`, `openssl` comprises), puis demande :
 
 - **l'adresse (FQDN) du central**, par exemple `sentinel.larssen-homelab.fr`. Il vérifie que
   `https://<fqdn>/up` répond avec un certificat valide avant d'aller plus loin : un certificat

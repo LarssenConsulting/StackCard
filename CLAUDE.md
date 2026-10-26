@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Discover inventories Ubuntu 24.04 servers (name, IPs, Apache sites, MySQL databases, the system and DB users tied to each site) and centralises them. Two independent apps share one contract:
 
-- `agent/` — Python agent, **standard library only** (runs as root on servers; no pip installs). Push-only: no listening port, never accepts commands.
+- `agent/` — Python agent, **standard library only**, Python ≥ 3.10 (Ubuntu 22.04 and 24.04; CI runs both) (runs as root on servers; no pip installs). Push-only: no listening port, never accepts commands.
 - `central/` — Laravel 13 + Filament 5 + Sanctum (PHP ≥ 8.4), receives snapshots and shows them.
 - `docs/superpowers/specs/2026-10-14-discover-design.md` is the design authority; user-facing docs are in `docs/install-*.md` (French). UI strings and agent messages are French.
 

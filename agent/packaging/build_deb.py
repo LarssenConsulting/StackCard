@@ -23,7 +23,7 @@ CONTROL = """Package: discover-agent
 Version: {version}
 Architecture: all
 Maintainer: Larssen Consulting <noreply@larssen-consulting.com>
-Depends: python3 (>= 3.12), iproute2, openssl
+Depends: python3 (>= 3.10), iproute2, openssl
 Section: admin
 Priority: optional
 Description: Discover inventory agent
