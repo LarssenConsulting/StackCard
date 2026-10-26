@@ -46,6 +46,12 @@ class ServerInfolist
                             ->formatStateUsing(fn (string $state) => AgentRelease::describe($state))
                             ->color(fn (?string $state) => AgentRelease::isOutdated($state) ? 'warning' : null)
                             ->placeholder('—'),
+                        TextEntry::make('enrollment')
+                            ->label('Jeton d’enrôlement')
+                            ->state(fn (Server $record) => ($token = $record->pendingEnrollmentToken())
+                                ? 'En attente, expire le '.$token->expires_at->timezone(config('app.timezone'))->format('d/m/Y à H:i')
+                                : null)
+                            ->placeholder('Aucun jeton valide'),
                         TextEntry::make('machine_id')->label('machine-id')->placeholder('—'),
                     ]),
                 TextEntry::make('notes')->label('Notes')->placeholder('—')->columnSpanFull(),

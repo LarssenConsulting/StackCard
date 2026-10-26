@@ -61,6 +61,12 @@ class Server extends Model
         return $this->hasMany(DbUser::class);
     }
 
+    /** The token issued for this server that can still enroll it, if any. */
+    public function pendingEnrollmentToken(): ?EnrollmentToken
+    {
+        return $this->enrollmentTokens()->whereNull('used_at')->where('expires_at', '>', now())->latest('id')->first();
+    }
+
     public function snapshots(): HasMany
     {
         return $this->hasMany(Snapshot::class);

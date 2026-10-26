@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Servers\Pages;
 
+use App\Filament\Resources\Servers\Actions\GenerateEnrollmentTokenAction;
 use App\Filament\Resources\Servers\ServerResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
@@ -15,6 +16,7 @@ class EditServer extends EditRecord
     {
         return [
             ViewAction::make(),
+            GenerateEnrollmentTokenAction::make(),
             DeleteAction::make(),
         ];
     }

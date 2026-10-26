@@ -3,6 +3,7 @@
 use App\Filament\Resources\Databases\Pages\ListDatabases;
 use App\Filament\Resources\Databases\Pages\ViewDatabase;
 use App\Filament\Resources\Servers\Pages\CreateServer;
+use App\Filament\Resources\Servers\Pages\EditServer;
 use App\Filament\Resources\Servers\Pages\ListServers;
 use App\Filament\Resources\Servers\Pages\ViewServer;
 use App\Filament\Resources\Servers\RelationManagers\DatabasesRelationManager;
@@ -124,6 +125,35 @@ it('generates an enrollment token and shows the install command once', function 
         ->toContain('curl -fsSL https://downloads.example.fr/agent/install.sh | sudo sh')
         ->toContain('<code style="user-select:all">sentinel.example.fr</code>')
         ->toContain('sudo discover-agent enroll --url https://sentinel.example.fr --token ');
+});
+
+it('regenerates a lost enrollment token from the list, the edit page or the sheet', function () {
+    $pending = Server::create(['name' => 'web02', 'status' => Server::STATUS_PENDING]);
+    $issued = fn () => EnrollmentToken::where('server_id', $pending->id)->whereNull('used_at')->sole();
+
+    Livewire::test(ListServers::class)->callTableAction('generateEnrollmentToken', $pending);
+    $first = $issued()->token_hash;
+
+    Livewire::test(EditServer::class, ['record' => $pending->getRouteKey()])
+        ->assertActionHasLabel('generateEnrollmentToken', 'Régénérer le jeton d’enrôlement')
+        ->callAction('generateEnrollmentToken');
+
+    // Only the latest token works: the lost one is replaced, not kept alongside.
+    expect($issued()->token_hash)->not->toBe($first);
+    Livewire::test(ViewServer::class, ['record' => $pending->getRouteKey()])
+        ->assertSee('En attente, expire le');
+});
+
+it('shows whether a server still waits for its enrollment', function () {
+    $pending = Server::create(['name' => 'web02', 'status' => Server::STATUS_PENDING]);
+
+    Livewire::test(ViewServer::class, ['record' => $pending->getRouteKey()])
+        ->assertActionHasLabel('generateEnrollmentToken', 'Générer un jeton d’enrôlement')
+        ->assertSee('Aucun jeton valide');
+
+    $this->travel(EnrollmentToken::VALID_HOURS + 1)->hours();
+    $pending->enrollmentTokens()->create(['token_hash' => 'x', 'expires_at' => now()->subHour()]);
+    Livewire::test(ViewServer::class, ['record' => $pending->getRouteKey()])->assertSee('Aucun jeton valide');
 });
 
 it('revokes a server', function () {

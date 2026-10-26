@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Servers\Tables;
 
+use App\Filament\Resources\Servers\Actions\GenerateEnrollmentTokenAction;
 use App\Filament\Resources\Servers\Schemas\ServerStatus;
 use App\Models\Server;
 use App\Support\AgentRelease;
@@ -49,6 +50,7 @@ class ServersTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
+                GenerateEnrollmentTokenAction::make()->label('Jeton d’enrôlement'),
             ]);
     }
 }
