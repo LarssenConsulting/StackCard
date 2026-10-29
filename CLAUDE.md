@@ -25,7 +25,7 @@ php artisan serve                                     # /admin (MFA is required 
 php artisan make:filament-user                        # create an admin
 php artisan discover:prune-snapshots                  # retention (also scheduled daily 03:00)
 php artisan db:seed --class=DemoServerSeeder          # fake server demo-web01 (PHP + Node sites, Docker containers), from database/seeders/demo/snapshot.json
-./deploy.sh                                           # production update: pull, composer install if composer.lock changed, migrate, optimize (never as root)
+./deploy.sh                                           # production update: pull, composer install if composer.lock changed, migrate, optimize, forget the cached latest agent version (never as root)
 ```
 
 Avoid interactive commands (e.g. `pest --init`): redirect stdin from `/dev/null`.

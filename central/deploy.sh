@@ -1,5 +1,6 @@
 #!/bin/sh
-# Met à jour le central : git pull, dépendances si composer.lock a changé, migrations, caches.
+# Met à jour le central : git pull, dépendances si composer.lock a changé, migrations, caches,
+# version de l’agent publiée relue.
 # À lancer en tant que propriétaire des fichiers, jamais en root (des caches appartenant à root
 # donneraient une erreur 500) : sudo -u <propriétaire> /chemin/vers/central/deploy.sh
 # POSIX sh : fonctionne aussi lancé par « sh deploy.sh ».
@@ -24,6 +25,8 @@ main() {
 
     php artisan migrate --force
     php artisan optimize   # inclut filament:optimize
+    # Relit la dernière version publiée de l'agent au lieu d'attendre l'expiration du cache (6 h).
+    php artisan cache:forget discover.agent_latest_version
 }
 
 # Sur une seule ligne : git pull peut remplacer ce fichier pendant qu'il s'exécute.
