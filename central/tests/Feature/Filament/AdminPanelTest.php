@@ -29,7 +29,6 @@ use App\Models\SiteDbRef;
 use App\Models\User;
 use App\Support\AgentRelease;
 use Filament\Facades\Filament;
-use Filament\Notifications\NotificationMailbox;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
@@ -124,23 +123,50 @@ it('lists a server sites and snapshots in its tabs', function () {
         ->assertTableColumnStateSet('linked_sites_count', 1, Database::where('name', 'shop_prod')->sole());
 });
 
+it('explains how to give the agent a MySQL account when it cannot read the databases', function () {
+    $server = Server::create(['name' => 'db02', 'status' => Server::STATUS_ACTIVE]);
+    $server->snapshots()->create([
+        'received_at' => now(), 'schema_version' => 1, 'error_count' => 1,
+        'payload' => ['errors' => [['collector' => 'mysql', 'message' => 'MySQL inaccessible (Access denied)']]],
+    ]);
+
+    Livewire::test(DatabasesRelationManager::class, ['ownerRecord' => $server, 'pageClass' => ViewServer::class])
+        ->assertSee('MySQL / MariaDB inaccessible pour l’agent')
+        ->assertSee('MySQL inaccessible (Access denied)')
+        ->assertSee('sudo mysql -u root -p -e')
+        ->assertSee('/etc/discover-agent/mysql.cnf')
+        ->assertSee('sudo discover-agent run')
+        ->assertDontSee('Aucune base de données');
+});
+
+it('says when MySQL is readable but has no database, without the account steps', function () {
+    $server = Server::create(['name' => 'db02', 'status' => Server::STATUS_ACTIVE, 'mysql_version' => '8.0.39']);
+
+    Livewire::test(DatabasesRelationManager::class, ['ownerRecord' => $server, 'pageClass' => ViewServer::class])
+        ->assertSee('Aucune base de données')
+        ->assertDontSee('mysql.cnf');
+});
+
 it('generates an enrollment token and shows the install command once', function () {
     config([
         'app.url' => 'https://sentinel.example.fr/',
         'discover.agent_install_url' => 'https://downloads.example.fr/agent/install.sh',
     ]);
 
-    Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])
+    $page = Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])
         ->callAction('generateEnrollmentToken');
 
     expect(EnrollmentToken::where('server_id', $this->web->id)->whereNull('used_at')->count())->toBe(1);
-    $mailbox = app(NotificationMailbox::class);
-    $mailbox->flush();
-    $body = (string) collect($mailbox->pull())->last()['body'];
-    expect($body)
-        ->toContain('curl -fsSL https://downloads.example.fr/agent/install.sh | sudo sh')
-        ->toContain('<code style="user-select:all">sentinel.example.fr</code>')
-        ->toContain('sudo discover-agent enroll --url https://sentinel.example.fr --token ');
+    $token = $page->get('mountedActions.0.arguments.token');
+    expect(EnrollmentToken::hash($token))->toBe(EnrollmentToken::where('server_id', $this->web->id)->whereNull('used_at')->sole()->token_hash);
+    $page->assertMountedActionModalSee('Jeton d’enrôlement créé')
+        ->assertMountedActionModalSeeHtml([
+            'curl -fsSL https://downloads.example.fr/agent/install.sh | sudo sh',
+            '<code style="user-select:all">sentinel.example.fr</code>',
+            "<code style=\"user-select:all\">{$token}</code>",
+            '<code style="user-select:all">sudo discover-agent run</code>',
+            "sudo discover-agent enroll --url https://sentinel.example.fr --token {$token}",
+        ]);
 });
 
 it('regenerates a lost enrollment token from the list, the edit page or the sheet', function () {

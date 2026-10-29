@@ -27,7 +27,7 @@ même version. Pour construire les mêmes fichiers en local : `python3 agent/pac
 ## 2. Installer et enrôler un serveur
 
 1. Dans le central : **Serveurs → Nouveau**, saisir un nom, puis sur la fiche du serveur
-   **Générer un jeton d'enrôlement**. La notification affiche **une seule fois** la commande,
+   **Générer un jeton d'enrôlement**. La fenêtre affiche **une seule fois** la commande,
    l'adresse du central et le jeton (valable 24 h, à usage unique).
 2. Sur le serveur :
 
@@ -65,7 +65,7 @@ Sans terminal ni `DISCOVER_TOKEN`, un serveur déjà enrôlé est seulement mis 
 
 Le paquet seul (`python3 agent/packaging/build_deb.py` → `agent/dist/discover-agent_<version>_all.deb`,
 puis `sudo apt install ./discover-agent_<version>_all.deb`) s'enrôle avec la commande « Agent déjà
-installé » de la notification, qui accepte aussi :
+installé » de la fenêtre du jeton, qui accepte aussi :
 
 ```bash
 sudo discover-agent enroll --url https://sentinel.larssen-homelab.fr --token <jeton>
@@ -107,11 +107,10 @@ mot de passe à stocker). Si root a un mot de passe, l'agent signale
 
 ```sql
 CREATE USER 'discover'@'localhost' IDENTIFIED BY '<mot de passe fort>';
--- liste des bases + lecture des comptes et des droits (information_schema)
+-- liste des bases ; lecture des comptes, des droits et des tailles (information_schema)
 GRANT SHOW DATABASES ON *.* TO 'discover'@'localhost';
-GRANT SELECT ON mysql.* TO 'discover'@'localhost';
--- facultatif : nécessaire pour connaître la taille des bases (sinon taille 0)
--- GRANT SELECT ON *.* TO 'discover'@'localhost';
+-- MySQL ne compte que les tables que le compte peut lire : sans ce droit, toutes les tailles valent 0
+GRANT SELECT ON *.* TO 'discover'@'localhost';
 ```
 
 ```bash

@@ -54,7 +54,7 @@ Security invariants (each has tests; keep them):
 - `POST /api/v1/inventory` → `IngestSnapshot`: stores the snapshot, then **replaces** the server's current state (ips, sites, site_db_refs, db_databases, db_users, db_grants) in one transaction, then runs `LinkDatabases` for the **whole fleet** (a ref may point at another server's database).
 - `LinkDatabases`: loopback/socket/own address → local; address of another *active* server → remote; else unresolved. Addresses are self-declared by agents, so an address claimed by two servers is ignored (anti-hijack) — keep that rule.
 - Table `db_databases` (model `Database`): `databases` is reserved in MySQL.
-- Filament: resources in `app/Filament/Resources/{Servers,Sites,Databases}` (Sites and Databases are read-only), dashboard widgets in `app/Filament/Widgets`. Enrollment tokens are shown once in a notification.
+- Filament: resources in `app/Filament/Resources/{Servers,Sites,Databases}` (Sites and Databases are read-only), dashboard widgets in `app/Filament/Widgets`. Enrollment tokens are shown once, in the second step of the generation modal (`GenerateEnrollmentTokenAction`).
 
 ## SQL release scripts (`_release/`)
 
