@@ -76,6 +76,21 @@ it('shows only the agent version when it is up to date or the release is unreada
     'not a version' => ['<html>', 200],
 ]);
 
+it('opens the upgrade steps from the newer agent version', function () {
+    config(['discover.agent_version_url' => 'https://releases.test/agent/version.txt']);
+    Http::fake(['releases.test/*' => Http::response("0.2.0\n")]);
+
+    Livewire::test(ListServers::class)
+        ->mountTableAction('upgradeAgent', $this->web)
+        ->assertMountedActionModalSee([
+            'Mettre à jour l’agent de web01',
+            'Version installée : 0.1.0 · version publiée : 0.2.0',
+            'releases/latest/download/install.sh | sudo sh',
+            'sudo discover-agent status',
+            'sudo discover-agent run',
+        ]);
+});
+
 it('does not look for a newer agent without a version url', function () {
     Http::fake();
 

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Servers\Tables;
 
 use App\Filament\Resources\Servers\Actions\GenerateEnrollmentTokenAction;
+use App\Filament\Resources\Servers\Actions\UpgradeAgentAction;
 use App\Filament\Resources\Servers\Schemas\ServerStatus;
 use App\Models\Server;
 use App\Support\AgentRelease;
@@ -32,6 +33,9 @@ class ServersTable
                     ->label('Agent')
                     ->formatStateUsing(fn (string $state) => AgentRelease::describe($state))
                     ->color(fn (?string $state) => AgentRelease::isOutdated($state) ? 'warning' : null)
+                    ->tooltip(fn (?string $state) => AgentRelease::isOutdated($state) ? 'Voir comment mettre à jour' : null)
+                    ->action(UpgradeAgentAction::make())
+                    ->disabledClick(fn (?string $state) => ! AgentRelease::isOutdated($state))
                     ->placeholder('—'),
                 TextColumn::make('last_seen_at')->label('Dernier envoi')->since()->sortable()->placeholder('jamais'),
                 TextColumn::make('status')
