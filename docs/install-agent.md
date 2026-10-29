@@ -90,6 +90,7 @@ journalctl -u discover-agent.service
 | `apache2ctl -S`, `/etc/apache2/sites-enabled/*` | vhosts actifs, domaines, ports, HTTPS, DocumentRoot, ProxyPass, handler PHP-FPM |
 | `/etc/php/*/fpm/pool.d/*.conf` | utilisateur et version PHP des pools |
 | `ss -ltnp`, `/proc/<pid>` | processus Node derrière un `ProxyPass`, son utilisateur, son dossier, systemd/PM2 |
+| `ufw status verbose` | état du pare-feu, politiques par défaut, règles (destination, action, source, IPv4/IPv6, commentaire) |
 | API Docker (`/var/run/docker.sock`, requêtes `GET` uniquement) | conteneurs, image, état, ports publiés, projet/service Compose, politique de redémarrage — jamais les variables d'environnement ni les autres labels |
 | `wp-config.php`, `.env`, `.env.local`, `.env.production` | **nom** de la base, **utilisateur**, **hôte** — jamais les mots de passe |
 | MySQL/MariaDB (socket local) | bases, tailles, comptes `user@host`, droits — jamais les empreintes de mot de passe |

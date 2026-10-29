@@ -23,7 +23,8 @@ class Server extends Model
     protected $fillable = [
         'name', 'hostname', 'fqdn', 'machine_id', 'primary_ip', 'os', 'kernel', 'virtualization',
         'apache_version', 'mysql_version', 'docker_version', 'agent_version', 'status', 'last_seen_at',
-        'last_source_ip', 'notes',
+        'last_source_ip', 'notes', 'ufw_status', 'ufw_logging', 'ufw_default_incoming',
+        'ufw_default_outgoing', 'ufw_default_routed',
     ];
 
     protected function casts(): array
@@ -49,6 +50,11 @@ class Server extends Model
     public function dockerContainers(): HasMany
     {
         return $this->hasMany(DockerContainer::class);
+    }
+
+    public function firewallRules(): HasMany
+    {
+        return $this->hasMany(FirewallRule::class);
     }
 
     public function databases(): HasMany

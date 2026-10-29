@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "collected_at": "2026-10-25T08:00:00Z",
-  "agent_version": "0.3.0",
+  "agent_version": "0.4.0",
   "server": {
     "hostname": "demo-web01",
     "fqdn": "demo-web01.example.lan",
@@ -970,6 +970,57 @@
         "compose_dir": null,
         "restart_policy": "no",
         "started_at": "2026-10-24T02:00:00Z"
+      }
+    ]
+  },
+  "ufw": {
+    "status": "active",
+    "logging": "on (low)",
+    "default_incoming": "deny",
+    "default_outgoing": "allow",
+    "default_routed": "disabled",
+    "rules": [
+      {
+        "to": "22/tcp",
+        "action": "LIMIT IN",
+        "from": "Anywhere",
+        "ipv6": false,
+        "comment": null
+      },
+      {
+        "to": "80,443/tcp (Apache Full)",
+        "action": "ALLOW IN",
+        "from": "Anywhere",
+        "ipv6": false,
+        "comment": null
+      },
+      {
+        "to": "3306/tcp",
+        "action": "ALLOW IN",
+        "from": "10.0.0.0/24",
+        "ipv6": false,
+        "comment": "MySQL depuis le réseau interne"
+      },
+      {
+        "to": "9100/tcp",
+        "action": "ALLOW IN",
+        "from": "10.0.0.5",
+        "ipv6": false,
+        "comment": "Prometheus node exporter"
+      },
+      {
+        "to": "22/tcp",
+        "action": "LIMIT IN",
+        "from": "Anywhere",
+        "ipv6": true,
+        "comment": null
+      },
+      {
+        "to": "80,443/tcp (Apache Full)",
+        "action": "ALLOW IN",
+        "from": "Anywhere",
+        "ipv6": true,
+        "comment": null
       }
     ]
   },

@@ -8,6 +8,7 @@ use App\Filament\Resources\Servers\Pages\ListServers;
 use App\Filament\Resources\Servers\Pages\ViewServer;
 use App\Filament\Resources\Servers\RelationManagers\DatabasesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\DockerContainersRelationManager;
+use App\Filament\Resources\Servers\RelationManagers\FirewallRulesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\NodeAppsRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SitesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SnapshotsRelationManager;
@@ -255,6 +256,28 @@ it('shows on a Docker site the container that serves it', function () {
 
 it('shows the Docker version of a server', function () {
     Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])->assertSee('27.3.1');
+});
+
+it('lists the UFW rules of a server and shows its default policies', function () {
+    Livewire::test(FirewallRulesRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
+        ->assertCanSeeTableRecords($this->web->firewallRules)
+        ->assertSee('80,443/tcp (Apache Full)')
+        ->assertSee('LIMIT IN')
+        ->assertSee('app01 vers MySQL')
+        ->assertSee('IPv6');
+
+    Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])
+        ->assertSee('Pare-feu UFW')
+        ->assertSee('Actif')
+        ->assertSee('entrant deny, sortant allow, routé disabled');
+});
+
+it('says when UFW is inactive', function () {
+    $this->web->firewallRules()->delete();
+    $this->web->update(['ufw_status' => 'inactive']);
+
+    Livewire::test(FirewallRulesRelationManager::class, ['ownerRecord' => $this->web, 'pageClass' => ViewServer::class])
+        ->assertSee('UFW est inactif sur ce serveur');
 });
 
 it('shows the chain from a site to its database account', function () {

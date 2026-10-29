@@ -9,6 +9,7 @@ use App\Filament\Resources\Servers\Pages\ViewServer;
 use App\Filament\Resources\Servers\RelationManagers\DatabasesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\DbUsersRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\DockerContainersRelationManager;
+use App\Filament\Resources\Servers\RelationManagers\FirewallRulesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\NodeAppsRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SitesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SnapshotsRelationManager;
@@ -57,6 +58,7 @@ class ServerResource extends Resource
             SitesRelationManager::class,
             NodeAppsRelationManager::class,
             DockerContainersRelationManager::class,
+            FirewallRulesRelationManager::class,
             DatabasesRelationManager::class,
             DbUsersRelationManager::class,
             SnapshotsRelationManager::class,

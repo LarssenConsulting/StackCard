@@ -31,6 +31,19 @@ class ServerInfolist
                         TextEntry::make('apache_version')->label('Apache')->placeholder('—'),
                         TextEntry::make('mysql_version')->label('MySQL / MariaDB')->placeholder('—'),
                         TextEntry::make('docker_version')->label('Docker')->placeholder('—'),
+                        TextEntry::make('ufw_status')
+                            ->label('Pare-feu UFW')
+                            ->badge()
+                            ->formatStateUsing(fn (string $state) => match ($state) {
+                                'active' => 'Actif',
+                                'inactive' => 'Inactif',
+                                default => $state,
+                            })
+                            ->color(fn (string $state) => $state === 'active' ? 'success' : 'danger')
+                            ->helperText(fn (Server $record) => $record->ufw_default_incoming
+                                ? "Par défaut : entrant {$record->ufw_default_incoming}, sortant {$record->ufw_default_outgoing}, routé {$record->ufw_default_routed} · journalisation {$record->ufw_logging}"
+                                : null)
+                            ->placeholder('—'),
                     ]),
                 Section::make('Agent')
                     ->schema([

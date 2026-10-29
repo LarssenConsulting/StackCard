@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Store a validated snapshot: keep it as history, then replace the server's
- * current state (IPs, sites, databases, accounts, grants) in one transaction.
+ * current state (IPs, sites, databases, accounts, grants, firewall) in one transaction.
  */
 class IngestSnapshot
 {
@@ -50,6 +50,11 @@ class IngestSnapshot
             'apache_version' => $snapshot['apache']['version'] ?? null,
             'mysql_version' => $snapshot['mysql']['version'] ?? null,
             'docker_version' => $snapshot['docker']['version'] ?? null,
+            'ufw_status' => $snapshot['ufw']['status'] ?? null,
+            'ufw_logging' => $snapshot['ufw']['logging'] ?? null,
+            'ufw_default_incoming' => $snapshot['ufw']['default_incoming'] ?? null,
+            'ufw_default_outgoing' => $snapshot['ufw']['default_outgoing'] ?? null,
+            'ufw_default_routed' => $snapshot['ufw']['default_routed'] ?? null,
             'agent_version' => $snapshot['agent_version'] ?? null,
             'last_seen_at' => now(),
             'last_source_ip' => $sourceIp,
@@ -60,6 +65,7 @@ class IngestSnapshot
         $nodeApps = $this->storeNodeApps($server, $snapshot['node']['apps'] ?? []);
         $containers = $this->storeDockerContainers($server, $snapshot['docker']['containers'] ?? []);
         $this->storeSites($server, $snapshot['apache']['sites'] ?? [], $nodeApps, $containers);
+        $this->storeFirewallRules($server, $snapshot['ufw']['rules'] ?? []);
         $this->storeMysql($server, $snapshot['mysql'] ?? null);
 
         return $record;
@@ -81,6 +87,7 @@ class IngestSnapshot
         $server->sites()->delete();      // cascades to site_db_refs
         $server->nodeApps()->delete();
         $server->dockerContainers()->delete();
+        $server->firewallRules()->delete();
         $server->dbUsers()->delete();    // cascades to db_grants
         $server->databases()->delete();
     }
@@ -158,6 +165,20 @@ class IngestSnapshot
             foreach ($data['db_refs'] as $ref) {
                 $site->dbRefs()->create(Arr::only($ref, ['db_name', 'db_user', 'db_host', 'source']));
             }
+        }
+    }
+
+    private function storeFirewallRules(Server $server, array $rules): void
+    {
+        foreach (array_values($rules) as $position => $rule) {
+            $server->firewallRules()->create([
+                'position' => $position + 1,
+                'destination' => $rule['to'],
+                'action' => $rule['action'],
+                'source' => $rule['from'],
+                'ipv6' => $rule['ipv6'],
+                'comment' => $rule['comment'] ?? null,
+            ]);
         }
     }
 

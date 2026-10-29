@@ -112,6 +112,9 @@ class CollectApacheTest(unittest.TestCase):
     def test_docker_is_a_default_collector(self):
         self.assertIn("docker", snapshot.default_collectors([]))
 
+    def test_ufw_is_a_default_collector(self):
+        self.assertIn("ufw", snapshot.default_collectors([]))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -172,6 +172,8 @@ it('validates the snapshot', function (callable $change, string $field) {
     'node without apps' => [function ($s) { $s['node'] = []; return $s; }, 'node.apps'],
     'docker without containers' => [function ($s) { $s['docker'] = ['version' => '27.3.1']; return $s; }, 'docker.containers'],
     'bad docker port' => [function ($s) { $s['docker']['containers'][0]['ports'][0]['port'] = 70000; return $s; }, 'docker.containers.0.ports.0.port'],
+    'ufw without rules' => [function ($s) { $s['ufw'] = ['status' => 'inactive']; return $s; }, 'ufw.rules'],
+    'ufw rule without action' => [function ($s) { unset($s['ufw']['rules'][0]['action']); return $s; }, 'ufw.rules.0.action'],
     'nameless container' => [function ($s) { unset($s['docker']['containers'][0]['name']); return $s; }, 'docker.containers.0.name'],
 ]);
 
@@ -393,3 +395,52 @@ it('accepts a server without Docker', function () {
 
     expect($server->dockerContainers()->count())->toBe(0);
 });
+
+it('stores the UFW state and rules of the server, in order', function () {
+    [$server, $token] = enrolledServer();
+    sendInventory($this, $token, snapshotFixture())->assertOk();
+
+    $server->refresh();
+    $rules = $server->firewallRules()->orderBy('position')->get();
+    expect($server->ufw_status)->toBe('active')
+        ->and($server->ufw_logging)->toBe('on (low)')
+        ->and($server->ufw_default_incoming)->toBe('deny')
+        ->and($server->ufw_default_outgoing)->toBe('allow')
+        ->and($server->ufw_default_routed)->toBe('disabled')
+        ->and($rules->pluck('position')->all())->toBe([1, 2, 3, 4])
+        ->and($rules[2]->only(['destination', 'action', 'source', 'ipv6', 'comment']))->toBe([
+            'destination' => '3306/tcp', 'action' => 'ALLOW IN', 'source' => '10.0.0.12', 'ipv6' => false,
+            'comment' => 'app01 vers MySQL',
+        ])
+        ->and($rules[3]->ipv6)->toBeTrue();
+});
+
+it('replaces the UFW rules on each snapshot', function () {
+    [$server, $token] = enrolledServer();
+    sendInventory($this, $token, snapshotFixture())->assertOk();
+    sendInventory($this, $token, snapshotFixture(function ($s) {
+        $s['ufw'] = array_merge($s['ufw'], ['status' => 'inactive', 'default_incoming' => null, 'rules' => []]);
+
+        return $s;
+    }))->assertOk();
+
+    expect($server->firewallRules()->count())->toBe(0)
+        ->and($server->refresh()->ufw_status)->toBe('inactive')
+        ->and($server->ufw_default_incoming)->toBeNull();
+});
+
+it('still accepts agents 0.3, which send no UFW section, and servers without UFW', function (?array $ufw) {
+    [$server, $token] = enrolledServer();
+
+    sendInventory($this, $token, snapshotFixture(function ($s) use ($ufw) {
+        unset($s['ufw']);
+
+        return $ufw === null ? $s : array_merge($s, $ufw);
+    }))->assertOk();
+
+    expect($server->firewallRules()->count())->toBe(0)
+        ->and($server->refresh()->ufw_status)->toBeNull();
+})->with([
+    'agent 0.3' => [null],
+    'no ufw' => [['ufw' => null]],
+]);

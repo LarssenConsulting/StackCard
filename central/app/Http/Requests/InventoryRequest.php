@@ -112,6 +112,20 @@ class InventoryRequest extends FormRequest
             'docker.containers.*.restart_policy' => ['nullable', 'string', 'max:32'],
             'docker.containers.*.started_at' => ['nullable', 'date'],
 
+            // Added by agent 0.4.0: optional, so older agents are still accepted.
+            'ufw' => ['sometimes', 'nullable', 'array'],
+            'ufw.status' => ['nullable', 'string', 'max:16'],
+            'ufw.logging' => ['nullable', 'string', 'max:32'],
+            'ufw.default_incoming' => ['nullable', 'string', 'max:16'],
+            'ufw.default_outgoing' => ['nullable', 'string', 'max:16'],
+            'ufw.default_routed' => ['nullable', 'string', 'max:16'],
+            'ufw.rules' => $listOf('ufw', 2000),
+            'ufw.rules.*.to' => ['required', 'string', 'max:255'],
+            'ufw.rules.*.action' => ['required', 'string', 'max:16'],
+            'ufw.rules.*.from' => ['required', 'string', 'max:255'],
+            'ufw.rules.*.ipv6' => ['required', 'boolean'],
+            'ufw.rules.*.comment' => $name,
+
             'mysql' => ['present', 'nullable', 'array'],
             'mysql.version' => $name,
             'mysql.databases' => $listOf('mysql', 10000),

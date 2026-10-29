@@ -119,6 +119,16 @@
       }
     ]
   },
+  "ufw": {
+    "status": "active", "logging": "on (low)",
+    "default_incoming": "deny", "default_outgoing": "allow", "default_routed": "disabled",
+    "rules": [
+      {"to": "22/tcp", "action": "LIMIT IN", "from": "Anywhere", "ipv6": false, "comment": null},
+      {"to": "80,443/tcp (Apache Full)", "action": "ALLOW IN", "from": "Anywhere", "ipv6": false, "comment": null},
+      {"to": "3306/tcp", "action": "ALLOW IN", "from": "10.0.0.12", "ipv6": false, "comment": "app01 vers MySQL"},
+      {"to": "22/tcp", "action": "LIMIT IN", "from": "Anywhere", "ipv6": true, "comment": null}
+    ]
+  },
   "errors": [
     {"collector": "apache", "message": "legacy.example.com: ValueError: weird vhost"}
   ]
