@@ -162,9 +162,9 @@ it('generates an enrollment token and shows the install command once', function 
     $page->assertMountedActionModalSee('Jeton d’enrôlement créé')
         ->assertMountedActionModalSeeHtml([
             'curl -fsSL https://downloads.example.fr/agent/install.sh | sudo sh',
-            '<code style="user-select:all">sentinel.example.fr</code>',
-            "<code style=\"user-select:all\">{$token}</code>",
-            '<code style="user-select:all">sudo discover-agent run</code>',
+            '<code style="user-select:all;overflow-wrap:anywhere">sentinel.example.fr</code>',
+            "<code style=\"user-select:all;overflow-wrap:anywhere\">{$token}</code>",
+            '<code style="user-select:all;overflow-wrap:anywhere">sudo discover-agent run</code>',
             "sudo discover-agent enroll --url https://sentinel.example.fr --token {$token}",
         ]);
 });
@@ -196,6 +196,12 @@ it('shows whether a server still waits for its enrollment', function () {
     $this->travel(EnrollmentToken::VALID_HOURS + 1)->hours();
     $pending->enrollmentTokens()->create(['token_hash' => 'x', 'expires_at' => now()->subHour()]);
     Livewire::test(ViewServer::class, ['record' => $pending->getRouteKey()])->assertSee('Aucun jeton valide');
+});
+
+it('does not present the consumed token of an enrolled server as a problem', function () {
+    Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])
+        ->assertSee('Utilisé, agent enrôlé')
+        ->assertDontSee('Aucun jeton valide');
 });
 
 it('revokes a server', function () {

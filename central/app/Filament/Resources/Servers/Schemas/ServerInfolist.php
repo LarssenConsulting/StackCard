@@ -64,7 +64,9 @@ class ServerInfolist
                             ->state(fn (Server $record) => ($token = $record->pendingEnrollmentToken())
                                 ? 'En attente, expire le '.$token->expires_at->timezone(config('app.timezone'))->format('d/m/Y à H:i')
                                 : null)
-                            ->placeholder('Aucun jeton valide'),
+                            ->placeholder(fn (Server $record) => $record->status === Server::STATUS_ACTIVE
+                                ? 'Utilisé, agent enrôlé'
+                                : 'Aucun jeton valide'),
                         TextEntry::make('machine_id')->label('machine-id')->placeholder('—'),
                     ]),
                 TextEntry::make('notes')->label('Notes')->placeholder('—')->columnSpanFull(),

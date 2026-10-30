@@ -23,7 +23,7 @@ class UpgradeAgentAction
 
     private static function steps(): HtmlString
     {
-        $code = fn (string $text) => '<code style="user-select:all">'.e($text).'</code>';
+        $code = fn (string $text) => '<code style="user-select:all;overflow-wrap:anywhere">'.e($text).'</code>';
 
         return new HtmlString(
             '<ol style="list-style:decimal;padding-left:1.25rem;display:grid;gap:.75rem">'
