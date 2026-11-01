@@ -115,9 +115,10 @@ it('shows the section JSON indented and coloured, in a scrollable block, escaped
     ])->render();
 
     expect($html)
-        ->toContain('overflow:auto')
+        ->toContain('overflow: auto')
         ->toContain('max-height:60vh')
-        ->toContain("{\n    <span class=\"sc-json-key\">&quot;a&quot;</span>: {\n        <span class=\"sc-json-key\">&quot;b&quot;</span>:")
+        ->toContain("{\n  <span class=\"sc-json-key\">&quot;a&quot;</span>: {\n    <span class=\"sc-json-key\">&quot;b&quot;</span>:")
+        ->toContain('Copier')
         ->toContain('<span class="sc-json-string">&quot;https://h/é&quot;</span>')
         ->toContain('<span class="sc-json-number">-1.5</span>')
         ->toContain('<span class="sc-json-literal">true</span>')
@@ -129,11 +130,17 @@ it('shows the section JSON indented and coloured, in a scrollable block, escaped
 
 it('does not read a number or keyword inside a string as a token', function () {
     expect((string) App\Support\JsonHighlighter::html(['true 12 null "q" \\ end']))
-        ->toBe("[\n    <span class=\"sc-json-string\">&quot;true 12 null \\&quot;q\\&quot; \\\\ end&quot;</span>\n]");
+        ->toBe("[\n  <span class=\"sc-json-string\">&quot;true 12 null \\&quot;q\\&quot; \\\\ end&quot;</span>\n]");
 });
 
 it('falls back to escaped plain text for a very large section', function () {
     $html = (string) App\Support\JsonHighlighter::html(['big' => str_repeat('<x>', 200000)]);
 
     expect($html)->not->toContain('<span')->not->toContain('<x>')->toContain('&lt;x&gt;');
+});
+
+it('keeps a copy button away from a section without data', function () {
+    $html = view('filament.server-section.data', ['error' => 'timeout', 'data' => null, 'sourceErrors' => []])->render();
+
+    expect($html)->toContain('Aucune donnée.')->toContain('timeout')->not->toContain('Copier');
 });

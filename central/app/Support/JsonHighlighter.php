@@ -20,7 +20,8 @@ class JsonHighlighter
 
     public static function html(mixed $data): HtmlString
     {
-        $json = (string) json_encode($data, self::FLAGS);
+        // Two spaces per level instead of PHP's four. A JSON string holds no raw newline, so only indentation matches.
+        $json = (string) preg_replace_callback('/^ +/m', fn (array $m) => substr($m[0], 0, (int) (strlen($m[0]) / 2)), (string) json_encode($data, self::FLAGS));
         if (strlen($json) > self::MAX_HIGHLIGHTED_BYTES) {
             return new HtmlString(e($json));
         }
