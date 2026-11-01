@@ -20,7 +20,7 @@ class BuildSnapshotTest(unittest.TestCase):
             "server": lambda: {"hostname": "web01"},
             "apache": lambda: None,
             "mysql": lambda: {"version": "8.0"},
-        })
+        }, section_runner=lambda due: {})
         self.assertEqual(snap["schema_version"], 1)
         self.assertEqual(snap["agent_version"], __version__)
         self.assertRegex(snap["collected_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
@@ -34,7 +34,7 @@ class BuildSnapshotTest(unittest.TestCase):
             "server": lambda: {"hostname": "web01"},
             "apache": crash,
             "mysql": boom,
-        })
+        }, section_runner=lambda due: {})
         self.assertEqual(snap["server"], {"hostname": "web01"})
         self.assertIsNone(snap["mysql"])
         self.assertIsNone(snap["apache"])
@@ -50,7 +50,9 @@ class BuildSnapshotTest(unittest.TestCase):
     def test_failed_server_collector_still_sends_a_minimal_identity(self):
         import socket
 
-        snap = snapshot.build_snapshot({"server": crash, "apache": lambda: None, "mysql": lambda: None})
+        snap = snapshot.build_snapshot(
+            {"server": crash, "apache": lambda: None, "mysql": lambda: None}, section_runner=lambda due: {}
+        )
         self.assertEqual(snap["server"]["hostname"], socket.gethostname())
         self.assertEqual(snap["server"]["interfaces"], [])
         self.assertEqual(snap["errors"][0]["collector"], "server")
