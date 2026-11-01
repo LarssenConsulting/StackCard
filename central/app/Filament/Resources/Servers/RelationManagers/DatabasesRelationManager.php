@@ -5,7 +5,9 @@ namespace App\Filament\Resources\Servers\RelationManagers;
 use App\Filament\Resources\Databases\DatabaseResource;
 use App\Filament\Resources\Databases\Tables\DatabasesTable;
 use App\Models\Server;
+use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
 
@@ -28,11 +30,24 @@ class DatabasesRelationManager extends RelationManager
             ->emptyStateHeading(fn () => match (true) {
                 $this->mysqlError() !== null => 'MySQL / MariaDB inaccessible pour l’agent',
                 $this->getOwnerRecord()->mysql_version !== null => 'Aucune base de données',
-                default => 'MySQL / MariaDB non détecté',
+                default => 'MySQL / MariaDB non connecté',
             })
-            ->emptyStateDescription(fn () => $this->getOwnerRecord()->mysql_version !== null && $this->mysqlError() === null
-                ? null
-                : self::readerSteps($this->mysqlError()));
+            ->emptyStateDescription(fn () => ($error = $this->mysqlError()) !== null
+                ? new HtmlString('L’agent signale : <code>'.e($error).'</code>')
+                : null)
+            ->emptyStateActions([
+                Action::make('mysqlReaderSteps')
+                    ->label('Voir les instructions')
+                    ->icon('heroicon-o-command-line')
+                    ->visible(fn () => $this->getOwnerRecord()->mysql_version === null || $this->mysqlError() !== null)
+                    ->modalHeading('Connecter MySQL / MariaDB à l’agent')
+                    ->modalDescription('Si MySQL ou MariaDB est installé mais que root n’y accède pas par le socket '
+                        .'(root avec mot de passe), créez un compte en lecture seule pour l’agent.')
+                    ->modalContent(fn () => self::readerSteps())
+                    ->modalWidth(Width::TwoExtraLarge)
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fermer'),
+            ]);
     }
 
     /** The MySQL error of the latest snapshot: the agent could not read the databases. */
@@ -46,27 +61,29 @@ class DatabasesRelationManager extends RelationManager
     }
 
     /** Create a read-only MySQL account for the agent when root is not reachable over the socket. */
-    private static function readerSteps(?string $error): HtmlString
+    private static function readerSteps(): HtmlString
     {
-        $block = fn (string $text) => '<pre style="user-select:all;white-space:pre-wrap;text-align:left;'
+        $block = fn (string $text) => '<pre style="user-select:all;white-space:pre-wrap;overflow-wrap:anywhere;'
             .'margin-top:.25rem;padding:.5rem .75rem;border-radius:.5rem;background:rgb(0 0 0 / .05)"><code>'
             .e($text).'</code></pre>';
-        $sql = "CREATE USER 'discover'@'localhost' IDENTIFIED BY '\$PASS'; "
-            ."GRANT SHOW DATABASES ON *.* TO 'discover'@'localhost'; "
-            ."GRANT SELECT ON *.* TO 'discover'@'localhost';";
 
+        // The SQL goes through stdin: as an argument, the password would be visible in `ps`.
         return new HtmlString(
-            ($error !== null ? '<p>L’agent signale : <code>'.e($error).'</code></p>' : '')
-            .'<p style="margin-top:.5rem">Si MySQL ou MariaDB est installé mais que root n’y accède pas par le socket '
-            .'(root avec mot de passe), créez un compte en lecture seule pour l’agent. Sur le serveur :</p>'
-            .'<ol style="list-style:decimal;padding-left:1.25rem;text-align:left;display:grid;gap:.75rem;margin-top:.75rem">'
-            .'<li>Générez un mot de passe et créez le compte (le mot de passe root MySQL est demandé) :'
-            .$block("PASS=\$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9')\nsudo mysql -u root -p -e \"{$sql}\"")
+            '<ol style="list-style:decimal;padding-left:1.25rem;display:grid;gap:.75rem">'
+            .'<li>Sur le serveur, générez un mot de passe et créez le compte (le mot de passe root MySQL est demandé) :'
+            .$block("PASS=\$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9')\n"
+                ."sudo mysql -u root -p <<SQL\n"
+                ."CREATE USER 'discover'@'localhost' IDENTIFIED BY '\$PASS';\n"
+                ."GRANT SHOW DATABASES ON *.* TO 'discover'@'localhost';\n"
+                ."GRANT SELECT ON *.* TO 'discover'@'localhost';\n"
+                .'SQL')
             .'<code>SELECT ON *.*</code> sert aux tailles des bases : MySQL ne compte que les tables '
             .'que le compte peut lire (sans ce droit, toutes les tailles valent 0).</li>'
-            .'<li>Donnez ce compte à l’agent (fichier lisible par root seul), dans le même terminal :'
+            .'<li>Donnez ce compte à l’agent (fichier lisible par root seul), dans le même terminal, '
+            .'puis effacez le mot de passe de la session :'
             .$block("printf '[client]\\nuser=discover\\npassword=\"%s\"\\n' \"\$PASS\" \\\n"
-                .'  | sudo install -m 0600 -o root -g root /dev/stdin /etc/discover-agent/mysql.cnf')
+                ."  | sudo install -m 0600 -o root -g root /dev/stdin /etc/discover-agent/mysql.cnf\n"
+                .'unset PASS')
             .'</li>'
             .'<li>Envoyez un inventaire, puis rechargez cette page :'.$block('sudo discover-agent run').'</li>'
             .'</ol>'

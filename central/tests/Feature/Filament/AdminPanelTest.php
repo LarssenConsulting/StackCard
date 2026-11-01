@@ -133,10 +133,25 @@ it('explains how to give the agent a MySQL account when it cannot read the datab
     Livewire::test(DatabasesRelationManager::class, ['ownerRecord' => $server, 'pageClass' => ViewServer::class])
         ->assertSee('MySQL / MariaDB inaccessible pour l’agent')
         ->assertSee('MySQL inaccessible (Access denied)')
-        ->assertSee('sudo mysql -u root -p -e')
-        ->assertSee('/etc/discover-agent/mysql.cnf')
-        ->assertSee('sudo discover-agent run')
-        ->assertDontSee('Aucune base de données');
+        ->assertDontSee('mysql.cnf')
+        ->assertDontSee('Aucune base de données')
+        ->mountTableAction('mysqlReaderSteps')
+        ->assertMountedActionModalSee([
+            'Connecter MySQL / MariaDB à l’agent',
+            'sudo mysql -u root -p &lt;&lt;SQL',
+            '/etc/discover-agent/mysql.cnf',
+            'unset PASS',
+            'sudo discover-agent run',
+        ], escape: false);
+});
+
+it('offers the MySQL account steps when no MySQL was detected', function () {
+    $server = Server::create(['name' => 'db02', 'status' => Server::STATUS_ACTIVE]);
+
+    Livewire::test(DatabasesRelationManager::class, ['ownerRecord' => $server, 'pageClass' => ViewServer::class])
+        ->assertSee('MySQL / MariaDB non connecté')
+        ->assertSee('Voir les instructions')
+        ->assertDontSee('mysql.cnf');
 });
 
 it('says when MySQL is readable but has no database, without the account steps', function () {
@@ -144,7 +159,7 @@ it('says when MySQL is readable but has no database, without the account steps',
 
     Livewire::test(DatabasesRelationManager::class, ['ownerRecord' => $server, 'pageClass' => ViewServer::class])
         ->assertSee('Aucune base de données')
-        ->assertDontSee('mysql.cnf');
+        ->assertDontSee('Voir les instructions');
 });
 
 it('generates an enrollment token and shows the install command once', function () {
