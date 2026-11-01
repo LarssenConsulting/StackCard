@@ -69,7 +69,7 @@ Section invariants (each has tests):
 - `LinkDatabases`: loopback/socket/own address → local; address of another *active* server → remote; else unresolved. Addresses are self-declared by agents, so an address claimed by two servers is ignored (anti-hijack) — keep that rule.
 - Table `db_databases` (model `Database`): `databases` is reserved in MySQL.
 - `IngestSnapshot` also stores `sections` in `server_sections` (history: a new row only when `sha256`, `error` or `source_errors` changed, otherwise `collected_at`/`last_seen_at`; `skipped_not_due` writes nothing); `snapshots.payload` does not hold them. `LimitRequestBody` caps the body at 20 MiB. Deploy the central before an agent 0.5, or `sections` is dropped silently.
-- Filament: resources in `app/Filament/Resources/{Servers,Sites,Databases}` (Sites and Databases are read-only), dashboard widgets in `app/Filament/Widgets`. Enrollment tokens are shown once, in the second step of the generation modal (`GenerateEnrollmentTokenAction`).
+- Filament: resources in `app/Filament/Resources/{Servers,Sites,Databases}` (Sites and Databases are read-only), dashboard widgets in `app/Filament/Widgets`. The server's « Pare-feu » tab holds one table per firewall: UFW (relation manager), then nftables, iptables and iptables-legacy (`App\Livewire\Firewall`, Filament tables over the rows of the latest `network` section, built by `App\Support\FirewallEngines`, `NftRuleset` and `IptablesRules`). Enrollment tokens are shown once, in the second step of the generation modal (`GenerateEnrollmentTokenAction`).
 
 ## SQL release scripts (`_release/`)
 

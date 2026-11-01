@@ -1,4 +1,4 @@
-"""Section `network`: listening sockets, MPTCP listeners, nftables, UFW and mitigation services."""
+"""Section `network`: listening sockets, MPTCP listeners, nftables, iptables, UFW and mitigation services."""
 
 import ipaddress
 import json
@@ -19,11 +19,16 @@ SS_MPTCP_COMMAND = ["ss", "-ltnMH"]
 MPTCP_SYSCTL = "/proc/sys/net/mptcp/enabled"
 MPTCP_DIAG_MODULE = "/sys/module/mptcp_diag"
 NFT_COMMAND = ["nft", "-j", "list", "ruleset"]
+# `iptables-save` follows the system's backend: rules left in the other one would stay unseen.
+IPTABLES_SAVE = {"v4": "iptables-save", "v6": "ip6tables-save"}
+IPTABLES_LEGACY_SAVE = {"v4": "iptables-legacy-save", "v6": "ip6tables-legacy-save"}
 SYSTEMCTL_OK = (0, 1, 3, 4)  # is-enabled / is-active exit non-zero for disabled and inactive units
 
 _PROCESS = re.compile(r'\("((?:[^"\\]|\\.)*)",pid=(\d+)')
 _STAT_AFTER_COMM = re.compile(r"\s+\S+\s+(\d+)")
 _LOOPBACK_V4 = ipaddress.ip_network("127.0.0.0/8")
+_CHAIN_COUNTERS = re.compile(r"\s+\[\d+:\d+\]\Z")
+_IPTABLES_COMMENT = re.compile(r'(--comment\s+)("(?:[^"\\]|\\.)*"|\S+)')
 
 
 def _split_endpoint(text):
@@ -147,6 +152,28 @@ def read_nft(runner):
     return _clean_nft(json.loads(run_tool(runner, NFT_COMMAND)))
 
 
+def parse_iptables_save(text):
+    """The lines of `iptables-save`, in order: order decides which rule applies.
+
+    Chain counters and the dated comment lines are live values. Only `--comment` is free text:
+    `redact` on a whole rule would read `-p tcp` as a password option.
+    """
+    lines = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line and not line.startswith("#"):
+            line = _CHAIN_COUNTERS.sub("", line)
+            lines.append(_IPTABLES_COMMENT.sub(lambda m: m.group(1) + redact(m.group(2)), line))
+    return lines
+
+
+def read_iptables(errors, name, commands, runner):
+    return {
+        family: read_source(errors, f"{name}.{family}", lambda cmd=cmd: parse_iptables_save(run_tool(runner, [cmd])))
+        for family, cmd in commands.items()
+    }
+
+
 def read_mptcp(runner, ppid_of, path_exists):
     """MPTCP listeners. No row is only "none" if `ss` could ask: it needs the mptcp_diag module,
     which `ProtectKernelModules` keeps from loading in the service."""
@@ -201,6 +228,8 @@ def collect(runner=util.run_c, reader=util.read_text, ppid_of=None, has_ufw=lamb
             errors, "mptcp_listeners", lambda: read_mptcp(runner, ppid_of, path_exists)
         ),
         "nft": read_source(errors, "nft", lambda: read_nft(runner)),
+        "iptables": read_iptables(errors, "iptables", IPTABLES_SAVE, runner),
+        "iptables_legacy": read_iptables(errors, "iptables_legacy", IPTABLES_LEGACY_SAVE, runner),
         "ufw": read_source(errors, "ufw", lambda: read_ufw(runner, has_ufw)),
         "services": read_source(errors, "services", lambda: read_services(runner, services)),
     }

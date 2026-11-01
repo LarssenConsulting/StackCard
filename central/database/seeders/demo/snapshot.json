@@ -1202,7 +1202,7 @@
     },
     "network": {
       "collected_at": "2026-11-01T08:00:00Z",
-      "sha256": "6bab01542b0780742d27d372ecce2ce5f2c3d1d5e39820d6efee00e54d504a4b",
+      "sha256": "22004d50b4f39ddb29e3b3620c829f9a0112f990c8cba1222a733f128bfd8567",
       "error": null,
       "source_errors": {
         "nft": "not_installed"
@@ -1250,7 +1250,23 @@
             "enabled": "not-found",
             "active": "inactive"
           }
-        ]
+        ],
+        "iptables": {
+          "v4": [
+            "*filter",
+            ":INPUT DROP",
+            ":FORWARD DROP",
+            ":OUTPUT ACCEPT",
+            "-A INPUT -p tcp -m tcp --dport 22 -j ACCEPT",
+            "-A INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT",
+            "COMMIT"
+          ],
+          "v6": []
+        },
+        "iptables_legacy": {
+          "v4": [],
+          "v6": []
+        }
       }
     },
     "php": {
