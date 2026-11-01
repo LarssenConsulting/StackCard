@@ -61,6 +61,7 @@ Section invariants (each has tests):
 - PHP is run with `cwd=/` and a cleaned environment (`CLEAN_ENV`). Of `php -i` only the directive tables, PHP version, build date and the version lines of the `-m` modules are kept: never the `System` line nor the Environment and PHP Variables parts. All directives are reported on purpose (the central does not pilot the agent, so a narrow list would need a new agent per CVE): a credential under an unexpected name relies on `redact` alone. FPM pool files are reported whole, except `env[...]` lines, which never leave.
 - Lock files (`composer.lock`, `package-lock.json`) are read with `util.read_regular_file` and the 8 MiB `techs.LOCK_LIMIT`; only name and version are kept. Everything else under a home or a webroot is limited to 1 MiB.
 - `authorized_keys`: only type, fingerprint and masked comment leave; never `/etc/shadow`.
+- Fail2Ban: configuration only (`fail2ban-client -d`), with action name, port and protocol alone since action options can hold API keys. Banned addresses are live values: dropped from the jail data, from `-A f2b-* -s <ip>` iptables rules and from the sets of `f2b-*` nft tables.
 
 ## Central architecture
 
@@ -69,7 +70,7 @@ Section invariants (each has tests):
 - `LinkDatabases`: loopback/socket/own address → local; address of another *active* server → remote; else unresolved. Addresses are self-declared by agents, so an address claimed by two servers is ignored (anti-hijack) — keep that rule.
 - Table `db_databases` (model `Database`): `databases` is reserved in MySQL.
 - `IngestSnapshot` also stores `sections` in `server_sections` (history: a new row only when `sha256`, `error` or `source_errors` changed, otherwise `collected_at`/`last_seen_at`; `skipped_not_due` writes nothing); `snapshots.payload` does not hold them. `LimitRequestBody` caps the body at 20 MiB. Deploy the central before an agent 0.5, or `sections` is dropped silently.
-- Filament: resources in `app/Filament/Resources/{Servers,Sites,Databases}` (Sites and Databases are read-only), dashboard widgets in `app/Filament/Widgets`. The server's « Pare-feu » tab holds one table per firewall: UFW (relation manager), then nftables, iptables and iptables-legacy (`App\Livewire\Firewall`, Filament tables over the rows of the latest `network` section, built by `App\Support\FirewallEngines`, `NftRuleset` and `IptablesRules`). Enrollment tokens are shown once, in the second step of the generation modal (`GenerateEnrollmentTokenAction`).
+- Filament: resources in `app/Filament/Resources/{Servers,Sites,Databases}` (Sites and Databases are read-only), dashboard widgets in `app/Filament/Widgets`. The server's « Pare-feu » tab holds one table per firewall: UFW (relation manager), then nftables, iptables, iptables-legacy and Fail2Ban (`App\Livewire\Firewall`, Filament tables over the rows of the latest `network` section, built by `App\Support\FirewallEngines`, `NftRuleset` and `IptablesRules`). Enrollment tokens are shown once, in the second step of the generation modal (`GenerateEnrollmentTokenAction`).
 
 ## SQL release scripts (`_release/`)
 

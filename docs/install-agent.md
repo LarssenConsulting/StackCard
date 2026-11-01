@@ -137,7 +137,7 @@ serveur. Pour reproduire ce que voit le timer, lancez `sudo systemctl start disc
 
 **Données collectées.** Voir `docs/superpowers/specs/2026-10-14-discover-design.md` §4.7 : en
 particulier les lignes de cron et de sudoers, les `ExecStart` des unités hors paquet, les valeurs de
-pools PHP-FPM, toutes les directives PHP (de `php -i` pour FPM et CLI, de `php.ini` et `conf.d` pour mod_php), les extensions PHP chargées et les versions des bibliothèques liées, les URI des dépôts apt, la liste des paquets, les règles de pare-feu (UFW, nftables, iptables), les ports
+pools PHP-FPM, toutes les directives PHP (de `php -i` pour FPM et CLI, de `php.ini` et `conf.d` pour mod_php), les extensions PHP chargées et les versions des bibliothèques liées, les URI des dépôts apt, la liste des paquets, les règles de pare-feu (UFW, nftables, iptables), la configuration des jails Fail2Ban (sans les IP bannies), les ports
 en écoute, et pour `authorized_keys` uniquement l'empreinte SHA-256, le type et le commentaire (jamais la clé).
 L'agent ne lit jamais `/etc/shadow` ni les identifiants des runners GitHub.
 

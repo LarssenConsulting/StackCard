@@ -2,6 +2,7 @@
 
 use App\Filament\Resources\Servers\Pages\ViewServer;
 use App\Filament\Resources\Servers\RelationManagers\FirewallRulesRelationManager;
+use App\Livewire\Firewall\Fail2banTable;
 use App\Livewire\Firewall\IptablesLegacyTable;
 use App\Livewire\Firewall\IptablesTable;
 use App\Livewire\Firewall\NftablesTable;
@@ -103,6 +104,7 @@ it('puts one table per firewall under the same tab', function () {
         ->assertSeeLivewire(NftablesTable::class)
         ->assertSeeLivewire(IptablesTable::class)
         ->assertSeeLivewire(IptablesLegacyTable::class)
+        ->assertSeeLivewire(Fail2banTable::class)
         ->assertSeeHtml('Le pare-feu de l’hébergeur n’est pas visible depuis le serveur');
 });
 
@@ -153,11 +155,11 @@ it('tells a tool that is absent from one that failed', function () {
 });
 
 it('says when the agent is too old for the detail', function () {
-    firewallTable(NftablesTable::class, $this->server)->assertSee('il faut un agent 0.5.1 ou plus récent');
+    firewallTable(NftablesTable::class, $this->server)->assertSee('il faut un agent 0.5.2 ou plus récent');
 
     networkSection($this->server, ['nft' => null, 'ufw' => null], ['nft' => 'not_installed']);
     firewallTable(NftablesTable::class, $this->server)->assertSee('Non installé');
-    firewallTable(IptablesTable::class, $this->server)->assertSee('il faut un agent 0.5.1 ou plus récent');
+    firewallTable(IptablesTable::class, $this->server)->assertSee('il faut un agent 0.5.2 ou plus récent');
 });
 
 it('says when the section could not be read', function () {
@@ -197,4 +199,49 @@ it('survives malformed data', function () {
     firewallTable(NftablesTable::class, $this->server)->assertSuccessful()->assertSee('Aucune règle');
     firewallTable(IptablesTable::class, $this->server)->assertSuccessful();
     firewallTable(IptablesLegacyTable::class, $this->server)->assertSuccessful();
+});
+
+it('lists the Fail2Ban jails with their configuration', function () {
+    networkSection($this->server, ['fail2ban' => [
+        'enabled' => 'enabled', 'active' => 'active', 'config_errors' => ['Jail broken skipped'],
+        'jails' => [
+            ['name' => 'sshd', 'backend' => 'systemd', 'bantime' => '3600', 'findtime' => '600', 'maxretry' => '5',
+                'ignoreip' => ['127.0.0.1/8', '::1'], 'logpaths' => ['/var/log/auth.log'],
+                'actions' => [['name' => 'iptables-multiport', 'port' => 'ssh', 'protocol' => 'tcp']]],
+        ],
+    ]]);
+
+    firewallTable(Fail2banTable::class, $this->server)
+        ->assertSee('Fail2Ban')
+        ->assertSee('Service actif · lancé au démarrage · 1 jail activée · Erreur de configuration : Jail broken skipped')
+        ->assertSee('sshd')
+        ->assertSee('3600')
+        ->assertSee('iptables-multiport (ssh, tcp)')
+        ->assertSee('127.0.0.1/8, ::1')
+        ->assertSee('/var/log/auth.log');
+});
+
+it('says when Fail2Ban is stopped, absent or unread', function () {
+    networkSection($this->server, ['fail2ban' => ['enabled' => 'disabled', 'active' => 'inactive', 'jails' => [], 'config_errors' => []]]);
+    firewallTable(Fail2banTable::class, $this->server)->assertSee('Service inactif · non lancé au démarrage · aucune jail activée');
+
+    networkSection($this->server, ['fail2ban' => null], ['fail2ban' => 'not_installed']);
+    firewallTable(Fail2banTable::class, $this->server)->assertSee('Non installé');
+
+    networkSection($this->server, ['fail2ban' => null], ['fail2ban' => 'exited 255']);
+    firewallTable(Fail2banTable::class, $this->server)->assertSee('Non lu : exited 255');
+
+    networkSection($this->server, ['nft' => null]);
+    firewallTable(Fail2banTable::class, $this->server)->assertSee('il faut un agent 0.5.2 ou plus récent');
+});
+
+it('escapes and survives what an agent sends for Fail2Ban', function () {
+    networkSection($this->server, ['fail2ban' => [
+        'active' => ['x'], 'enabled' => 5, 'config_errors' => 'nope',
+        'jails' => ['text', ['name' => '<script>x</script>', 'actions' => ['y', ['name' => ['z']]], 'ignoreip' => 'one', 'logpaths' => [['deep']], 'bantime' => ['a']]],
+    ]]);
+
+    firewallTable(Fail2banTable::class, $this->server)
+        ->assertSuccessful()
+        ->assertDontSeeHtml('<script>x</script>');
 });

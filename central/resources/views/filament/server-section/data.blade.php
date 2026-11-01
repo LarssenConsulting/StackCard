@@ -1,23 +1,28 @@
-{{-- Data comes from agents: untrusted, printed only through {{ }} --}}
-<div class="space-y-4">
+{{-- Data comes from agents: untrusted, printed only through {{ }}. Inline styles: this view is not in the panel's CSS build. --}}
+@php
+    $flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR;
+    $code = 'margin-top:.25rem;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.75rem;line-height:1.25rem;'
+        .'padding:.75rem;border-radius:.5rem;background:rgb(127 127 127 / .1)';
+@endphp
+<div style="display:grid;gap:1rem">
     @if (filled($error))
         <div>
-            <p class="text-sm font-medium">Erreur</p>
-            <pre class="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-3 text-xs dark:bg-white/5">{{ $error }}</pre>
+            <p style="font-size:.875rem;font-weight:500">Erreur</p>
+            <pre style="{{ $code }};max-height:12rem"><code>{{ $error }}</code></pre>
         </div>
     @endif
     @if (! empty($sourceErrors))
         <div>
-            <p class="text-sm font-medium">Erreurs de source</p>
-            <pre class="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-3 text-xs dark:bg-white/5">{{ json_encode($sourceErrors, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+            <p style="font-size:.875rem;font-weight:500">Erreurs de source</p>
+            <pre style="{{ $code }};max-height:12rem"><code>{{ json_encode($sourceErrors, $flags) }}</code></pre>
         </div>
     @endif
     <div>
-        <p class="text-sm font-medium">Données</p>
+        <p style="font-size:.875rem;font-weight:500">Données</p>
         @if ($data === null)
-            <p class="mt-1 text-sm text-gray-500">Aucune donnée.</p>
+            <p style="margin-top:.25rem;font-size:.875rem;opacity:.7">Aucune donnée.</p>
         @else
-            <pre class="mt-1 max-h-[60vh] overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-3 text-xs dark:bg-white/5">{{ json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR) }}</pre>
+            <pre style="{{ $code }};max-height:60vh"><code>{{ json_encode($data, $flags) }}</code></pre>
         @endif
     </div>
 </div>

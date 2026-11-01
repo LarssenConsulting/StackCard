@@ -1202,7 +1202,7 @@
     },
     "network": {
       "collected_at": "2026-11-01T08:00:00Z",
-      "sha256": "22004d50b4f39ddb29e3b3620c829f9a0112f990c8cba1222a733f128bfd8567",
+      "sha256": "4e36e0a5a50862a0f090cf4f25d12586a780a07a235610bbdd9c0a3162deaefa",
       "error": null,
       "source_errors": {
         "nft": "not_installed"
@@ -1266,6 +1266,32 @@
         "iptables_legacy": {
           "v4": [],
           "v6": []
+        },
+        "fail2ban": {
+          "enabled": "enabled",
+          "active": "active",
+          "config_errors": [],
+          "jails": [
+            {
+              "name": "sshd",
+              "backend": "systemd",
+              "bantime": "3600",
+              "findtime": "600",
+              "maxretry": "5",
+              "ignoreip": [
+                "127.0.0.1/8",
+                "::1"
+              ],
+              "logpaths": [],
+              "actions": [
+                {
+                  "name": "iptables-multiport",
+                  "port": "ssh",
+                  "protocol": "tcp"
+                }
+              ]
+            }
+          ]
         }
       }
     },

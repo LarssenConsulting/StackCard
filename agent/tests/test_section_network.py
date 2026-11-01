@@ -38,7 +38,7 @@ COMMIT
 """
 
 
-def make(ss=SS, mptcp="", nft=None, ufw=UFW, enabled=None, active=None, has_ufw=True, saves=None, **overrides):
+def make(ss=SS, mptcp="", nft=None, ufw=UFW, enabled=None, active=None, has_ufw=True, saves=None, fail2ban="", **overrides):
     nft = json.dumps(NFT) if nft is None else nft
     saves = {
         "iptables-save": IPTABLES_SAVE, "ip6tables-save": "",
@@ -57,6 +57,8 @@ def make(ss=SS, mptcp="", nft=None, ufw=UFW, enabled=None, active=None, has_ufw=
             return result(mptcp if "M" in cmd[1] else ss)
         if cmd[0] == "nft":
             return result(nft)
+        if cmd == ["fail2ban-client", "-d"]:
+            return result(fail2ban)
         if cmd[0] in saves:
             return result(saves[cmd[0]])
         if cmd[0] in ("iptables-save", "ip6tables-save", "iptables-legacy-save", "ip6tables-legacy-save"):
@@ -160,6 +162,120 @@ class MptcpTest(unittest.TestCase):
         self.assertIsNone(c.data["mptcp_listeners"])
         self.assertIn("mptcp_listeners", c.source_errors)
         self.assertIsNotNone(c.data["sockets"])
+
+
+FAIL2BAN_DUMP = """\
+['set', 'loglevel', 'INFO']
+['set', 'dbfile', '/var/lib/fail2ban/fail2ban.sqlite3']
+['add', 'sshd', 'systemd']
+['set', 'sshd', 'addfailregex', 'secret-looking-regex']
+['set', 'sshd', 'maxretry', 5]
+['set', 'sshd', 'findtime', '600']
+['set', 'sshd', 'bantime', '3600']
+['set', 'sshd', 'addignoreip', '127.0.0.1/8', '::1']
+['set', 'sshd', 'addaction', 'iptables-multiport']
+['multi-set', 'sshd', 'action', 'iptables-multiport', [['actionban', 'x'], ['port', 'ssh'], ['protocol', 'tcp'], ['apikey', 'Hunter2']]]
+['add', 'apache-auth', 'auto']
+['set', 'apache-auth', 'addlogpath', '/var/log/apache2/error.log', 'head']
+['set', 'apache-auth', 'addlogpath', '/var/log/apache2/a.log', 'head']
+['set', 'apache-auth', 'addaction', 'sendmail']
+['set', 'apache-auth', 'action', 'sendmail', 'port', '80,443']
+['config-error', "Jail 'broken' skipped, because of wrong configuration: PGPASSWORD=hunter2"]
+not a list at all
+['unterminated'
+['start', 'sshd']
+['start', 'apache-auth']
+"""
+
+
+class Fail2banTest(unittest.TestCase):
+    def fail2ban(self, **kw):
+        return make(fail2ban=FAIL2BAN_DUMP, enabled={"fail2ban.service": "enabled"},
+                    active={"fail2ban.service": "active"}, **kw)
+
+    def test_the_configuration_of_each_jail_is_kept(self):
+        data = self.fail2ban().data["fail2ban"]
+        self.assertEqual(data["enabled"], "enabled")
+        self.assertEqual(data["active"], "active")
+        self.assertEqual([j["name"] for j in data["jails"]], ["apache-auth", "sshd"])
+        sshd = data["jails"][1]
+        self.assertEqual(sshd, {
+            "name": "sshd", "backend": "systemd", "bantime": "3600", "findtime": "600", "maxretry": "5",
+            "ignoreip": ["127.0.0.1/8", "::1"], "logpaths": [],
+            "actions": [{"name": "iptables-multiport", "port": "ssh", "protocol": "tcp"}],
+        })
+        apache = data["jails"][0]
+        self.assertEqual(apache["logpaths"], ["/var/log/apache2/a.log", "/var/log/apache2/error.log"])
+        self.assertEqual(apache["actions"], [{"name": "sendmail", "port": "80,443", "protocol": None}])
+        self.assertIsNone(apache["bantime"])
+
+    def test_action_options_and_regexes_never_leave(self):
+        text = json.dumps(self.fail2ban().data["fail2ban"])
+        for leak in ("Hunter2", "secret-looking-regex", "actionban", "hunter2"):
+            self.assertNotIn(leak, text)
+
+    def test_config_errors_are_reported_masked(self):
+        errors = self.fail2ban().data["fail2ban"]["config_errors"]
+        self.assertEqual(len(errors), 1)
+        self.assertIn("broken", errors[0])
+
+    def test_no_jail_is_an_empty_list(self):
+        c = make(fail2ban="['set', 'loglevel', 'INFO']\n")
+        self.assertEqual(c.data["fail2ban"]["jails"], [])
+        self.assertNotIn("fail2ban", c.source_errors)
+
+    def test_absent_is_not_installed(self):
+        c = make(fail2ban=util.CommandError("command not found: fail2ban-client"))
+        self.assertIsNone(c.data["fail2ban"])
+        self.assertEqual(c.source_errors["fail2ban"], "not_installed")
+
+    def test_failure_is_a_source_error(self):
+        c = make(fail2ban=util.CommandError("boom"))
+        self.assertIsNone(c.data["fail2ban"])
+        self.assertIn("boom", c.source_errors["fail2ban"])
+
+    def test_stopped_daemon_still_reports_its_configuration(self):
+        c = make(fail2ban=FAIL2BAN_DUMP, enabled={"fail2ban.service": "disabled"}, active={"fail2ban.service": "inactive"})
+        self.assertEqual(c.data["fail2ban"]["active"], "inactive")
+        self.assertEqual(len(c.data["fail2ban"]["jails"]), 2)
+
+class Fail2banBansTest(unittest.TestCase):
+    SAVE = """\
+*filter
+:INPUT ACCEPT [0:0]
+:f2b-sshd - [0:0]
+-A INPUT -p tcp -m multiport --dports 22 -j f2b-sshd
+-A f2b-sshd -s 203.0.113.9/32 -j REJECT --reject-with icmp-port-unreachable
+-A f2b-sshd -s 198.51.100.7/32 -j REJECT --reject-with icmp-port-unreachable
+-A f2b-sshd -j RETURN
+-A INPUT -s 203.0.113.9/32 -j DROP
+COMMIT
+"""
+
+    def test_banned_addresses_do_not_change_iptables(self):
+        lines = network.parse_iptables_save(self.SAVE)
+        self.assertIn("-A INPUT -p tcp -m multiport --dports 22 -j f2b-sshd", lines)
+        self.assertIn("-A f2b-sshd -j RETURN", lines)
+        self.assertFalse([l for l in lines if l.startswith("-A f2b-sshd -s")])
+
+    def test_an_own_rule_on_another_chain_stays(self):
+        self.assertIn("-A INPUT -s 203.0.113.9/32 -j DROP", network.parse_iptables_save(self.SAVE))
+
+    def ruleset(self, elem):
+        return json.dumps({"nftables": [
+            {"set": {"family": "inet", "table": "f2b-table", "name": "addr-set-sshd", "type": "ipv4_addr", "elem": elem}},
+            {"set": {"family": "inet", "table": "mine", "name": "blocked", "type": "ipv4_addr", "elem": ["10.0.0.1"]}},
+        ]})
+
+    def test_banned_addresses_do_not_change_nftables(self):
+        one = make(nft=self.ruleset(["203.0.113.9"])).data["nft"]
+        other = make(nft=self.ruleset(["198.51.100.7", "192.0.2.1"])).data["nft"]
+        self.assertEqual(one, other)
+        self.assertNotIn("elem", one["nftables"][0]["set"])
+        self.assertEqual(one["nftables"][0]["set"]["name"], "addr-set-sshd")
+
+    def test_a_set_of_another_table_keeps_its_elements(self):
+        self.assertEqual(make(nft=self.ruleset([])).data["nft"]["nftables"][1]["set"]["elem"], ["10.0.0.1"])
 
 
 class IptablesTest(unittest.TestCase):

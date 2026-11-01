@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Servers\RelationManagers;
 
 use App\Models\FirewallRule;
+use App\Livewire\Firewall\Fail2banTable;
 use App\Livewire\Firewall\IptablesLegacyTable;
 use App\Livewire\Firewall\IptablesTable;
 use App\Livewire\Firewall\NftablesTable;
@@ -39,6 +40,7 @@ class FirewallRulesRelationManager extends RelationManager
             Livewire::make(NftablesTable::class, $server),
             Livewire::make(IptablesTable::class, $server),
             Livewire::make(IptablesLegacyTable::class, $server),
+            Livewire::make(Fail2banTable::class, $server),
             View::make('filament.server-firewall.note'),
             RenderHook::make(PanelsRenderHook::RESOURCE_RELATION_MANAGER_AFTER),
         ]);

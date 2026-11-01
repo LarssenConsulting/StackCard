@@ -106,3 +106,19 @@ it('is read only', function () {
         ->assertTableActionDoesNotExist('delete', record: $row)
         ->assertTableActionExists('view', record: $row);
 });
+
+it('shows the section JSON indented, in a scrollable block, escaped', function () {
+    $html = view('filament.server-section.data', [
+        'error' => null,
+        'data' => ['a' => ['b' => '<script>x</script>', 'url' => 'https://h/é']],
+        'sourceErrors' => ['nft' => 'not_installed'],
+    ])->render();
+
+    expect($html)
+        ->toContain('overflow:auto')
+        ->toContain('max-height:60vh')
+        ->toContain("{\n    &quot;a&quot;: {\n        &quot;b&quot;:")
+        ->toContain('https://h/é')
+        ->toContain('&quot;nft&quot;: &quot;not_installed&quot;')
+        ->not->toContain('<script>x</script>');
+});
