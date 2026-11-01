@@ -107,18 +107,33 @@ it('is read only', function () {
         ->assertTableActionExists('view', record: $row);
 });
 
-it('shows the section JSON indented, in a scrollable block, escaped', function () {
+it('shows the section JSON indented and coloured, in a scrollable block, escaped', function () {
     $html = view('filament.server-section.data', [
         'error' => null,
-        'data' => ['a' => ['b' => '<script>x</script>', 'url' => 'https://h/é']],
+        'data' => ['a' => ['b' => '</span><script>x</script>', 'url' => 'https://h/é', 'n' => -1.5, 'on' => true, 'none' => null, 'list' => [1]]],
         'sourceErrors' => ['nft' => 'not_installed'],
     ])->render();
 
     expect($html)
         ->toContain('overflow:auto')
         ->toContain('max-height:60vh')
-        ->toContain("{\n    &quot;a&quot;: {\n        &quot;b&quot;:")
-        ->toContain('https://h/é')
-        ->toContain('&quot;nft&quot;: &quot;not_installed&quot;')
-        ->not->toContain('<script>x</script>');
+        ->toContain("{\n    <span class=\"sc-json-key\">&quot;a&quot;</span>: {\n        <span class=\"sc-json-key\">&quot;b&quot;</span>:")
+        ->toContain('<span class="sc-json-string">&quot;https://h/é&quot;</span>')
+        ->toContain('<span class="sc-json-number">-1.5</span>')
+        ->toContain('<span class="sc-json-literal">true</span>')
+        ->toContain('<span class="sc-json-literal">null</span>')
+        ->toContain('<span class="sc-json-key">&quot;nft&quot;</span>: <span class="sc-json-string">&quot;not_installed&quot;</span>')
+        ->not->toContain('<script>x</script>')
+        ->not->toContain('</span><script>');
+});
+
+it('does not read a number or keyword inside a string as a token', function () {
+    expect((string) App\Support\JsonHighlighter::html(['true 12 null "q" \\ end']))
+        ->toBe("[\n    <span class=\"sc-json-string\">&quot;true 12 null \\&quot;q\\&quot; \\\\ end&quot;</span>\n]");
+});
+
+it('falls back to escaped plain text for a very large section', function () {
+    $html = (string) App\Support\JsonHighlighter::html(['big' => str_repeat('<x>', 200000)]);
+
+    expect($html)->not->toContain('<span')->not->toContain('<x>')->toContain('&lt;x&gt;');
 });
