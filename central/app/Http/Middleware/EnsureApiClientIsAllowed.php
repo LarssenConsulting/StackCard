@@ -11,8 +11,9 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * The read API answers only an ApiClient calling from one of its addresses.
  *
- * `$request->ip()` is the address of the connection as long as no proxy is trusted: never configure
- * trustProxies with `*`, or anyone could forge X-Forwarded-For and walk through this check.
+ * `$request->ip()` is the address of the connection, or behind a proxy named in
+ * DISCOVER_TRUSTED_PROXIES the one it forwards. Never trust `*`: anyone could then forge
+ * X-Forwarded-For and walk through this check.
  */
 class EnsureApiClientIsAllowed
 {

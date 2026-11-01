@@ -11,4 +11,8 @@ return [
     // Empty: no check.
     'agent_version_url' => env('DISCOVER_AGENT_VERSION_URL', dirname($installUrl).'/version.txt'),
 
+    // Reverse proxies in front of the central (Traefik...), comma-separated addresses or ranges.
+    // Empty: the address of the connection is the caller's. Never `*`: see App\Support\TrustedProxyList.
+    'trusted_proxies' => env('DISCOVER_TRUSTED_PROXIES', ''),
+
 ];

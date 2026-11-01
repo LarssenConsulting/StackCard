@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Support\TrustedProxyList;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -22,6 +24,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Only named proxies are believed, and only for the address and scheme: never the Host header.
+        if ($proxies = TrustedProxyList::parse(config('discover.trusted_proxies'))) {
+            TrustProxies::at($proxies);
+            TrustProxies::withHeaders(Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO);
+        }
+
         // Enrollment tokens are guessable only by brute force: keep it slow.
         RateLimiter::for('enroll', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
 

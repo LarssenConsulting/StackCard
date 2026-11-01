@@ -3,6 +3,9 @@
 use App\Models\ApiClient;
 use App\Models\Server;
 use App\Models\ServerSection;
+use App\Support\TrustedProxyList;
+use Illuminate\Http\Middleware\TrustProxies;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 const ALLOWED_IP = '203.0.113.10';
@@ -145,6 +148,57 @@ it('cannot be fooled by a forwarded address', function () {
         ->getJson('/api/v1/servers')
         ->assertForbidden();
 });
+
+describe('behind a reverse proxy', function () {
+    beforeEach(function () {
+        TrustProxies::at(TrustedProxyList::parse('10.0.0.1'));
+        TrustProxies::withHeaders(Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO);
+    });
+
+    afterEach(fn () => TrustProxies::flushState());
+
+    $through = function ($test, string $proxy, string $forwarded) {
+        app('auth')->forgetGuards();
+
+        return $test->withServerVariables(['REMOTE_ADDR' => $proxy])
+            ->withHeaders(['X-Forwarded-For' => $forwarded])
+            ->withToken($test->token)
+            ->getJson('/api/v1/servers');
+    };
+
+    it('reads the address the proxy forwards', function () use ($through) {
+        $through($this, '10.0.0.1', ALLOWED_IP)->assertOk();
+        $through($this, '10.0.0.1', '198.51.100.7')->assertForbidden();
+    });
+
+    it('does not let a caller forge its address through the proxy', function () use ($through) {
+        // The proxy appends the real address: the one a caller wrote stays on the left.
+        $through($this, '10.0.0.1', ALLOWED_IP.', 198.51.100.7')->assertForbidden();
+    });
+
+    it('does not believe the header from anyone but the proxy', function () use ($through) {
+        $through($this, '198.51.100.7', ALLOWED_IP)->assertForbidden();
+    });
+
+    it('refuses a caller that appears as the proxy itself', function () use ($through) {
+        $through($this, '10.0.0.1', '10.0.0.1')->assertForbidden();
+    });
+});
+
+it('never trusts a proxy list that would believe anyone', function (string $value, array $expected) {
+    expect(TrustedProxyList::parse($value))->toBe($expected);
+})->with([
+    ['', []],
+    ['*', []],
+    ['**', []],
+    ['0.0.0.0/0', []],
+    ['::/0', []],
+    ['1.0.0.0/7', []],
+    ['nope', []],
+    ['10.0.0.1', ['10.0.0.1']],
+    [' 10.0.0.1 , 172.18.0.0/16, *', ['10.0.0.1', '172.18.0.0/16']],
+    ['fd00::1, fd00::/64', ['fd00::1', 'fd00::/64']],
+]);
 
 it('refuses a request without a token, or with a wrong one', function () {
     app('auth')->forgetGuards();

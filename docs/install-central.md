@@ -177,8 +177,17 @@ des serveurs : crontabs et règles sudoers masquées, `ExecStart` des unités, c
 le supprimer. Traitez la base du central comme sensible : accès restreint, sauvegardes chiffrées,
 administrateurs limités et authentification à deux facteurs (déjà imposée).
 
-Si le central est derrière un reverse proxy, configurez les proxys de confiance de Laravel, sinon
-l'« IP source » enregistrée pour chaque envoi sera celle du proxy.
+Si le central est derrière un reverse proxy (Traefik…), déclarez-le dans `.env`, sinon l'« IP source » de
+chaque envoi sera celle du proxy et l'API de lecture (§8) refusera tout le monde :
+
+```dotenv
+DISCOVER_TRUSTED_PROXIES=10.0.20.5
+```
+
+Une ou plusieurs adresses ou plages séparées par des virgules : **uniquement celles du proxy**. `*` et les plages
+trop larges sont ignorés. Puis `php artisan optimize`, car la configuration est en cache. Le proxy doit transmettre
+`X-Forwarded-For` en y **ajoutant** l'adresse réelle, et ne doit pas croire cet en-tête venant d'Internet (dans
+Traefik, ne pas activer `forwardedHeaders.insecure`). Le central ne doit pas être joignable sans passer par lui.
 
 ## 6. Tâches planifiées
 
@@ -234,7 +243,7 @@ variables de collection `baseUrl` et `token`, et lancez la collection depuis une
 **Sécurité.**
 - Appelez l'API **depuis le serveur du site**, jamais depuis le navigateur : le jeton et l'IP seraient ceux du visiteur.
 - Ces données sont la carte de vos serveurs (versions, comptes, ports, chemins), et leur masquage reste au mieux de ses moyens. Traitez le jeton comme un mot de passe d'administration.
-- Le contrôle porte sur l'adresse de la connexion. **Derrière un reverse proxy ou un CDN**, tout client paraît venir du proxy : soit vous autorisez l'API en direct, soit vous déclarez exactement ce proxy dans `trustProxies`. Ne mettez jamais `*` : n'importe qui pourrait alors falsifier `X-Forwarded-For` et contourner le filtre.
+- Le contrôle porte sur l'adresse de la connexion. **Derrière un reverse proxy ou un CDN**, tout client paraît venir du proxy : déclarez ce proxy dans `DISCOVER_TRUSTED_PROXIES` (§5). N'autorisez jamais l'adresse du proxy dans un client API : tout ce qui passe par lui franchirait le filtre.
 - Un refus écrit un `warning` dans `storage/logs/laravel.log` et chaque lecture un `info`, si `LOG_LEVEL` les laisse passer.
 - Défense supplémentaire, facultative, dans le VirtualHost :
 
