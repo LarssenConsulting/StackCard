@@ -1,0 +1,629 @@
+openapi: 3.0.3
+info:
+  title: StackCard, API de lecture
+  version: 1.0.0
+  description: |
+    Inventaire des serveurs et de leurs middlewares, pour évaluer leur exposition à une CVE.
+    L'API est en **lecture seule** et ne donne aucun verdict : l'évaluation revient au consommateur.
+
+    ## Accès
+
+    Deux conditions cumulatives, définies par l'administrateur de StackCard :
+
+    1. un **jeton** `Authorization: Bearer <jeton>`, valable 365 jours au plus ;
+    2. une **adresse IP autorisée** pour ce jeton : toute autre adresse reçoit un `403`, même avec un bon jeton.
+
+    Appelez l'API **depuis votre serveur, jamais depuis le navigateur** : le jeton y serait exposé et l'adresse
+    serait celle du visiteur. Traitez le jeton comme un mot de passe d'administration : ces données sont la
+    carte des serveurs (versions, comptes, ports, chemins).
+
+    Limite : **120 requêtes par minute** par adresse. Au-delà, `429` avec un en-tête `Retry-After`.
+
+    ## Évaluer une CVE sans se tromper
+
+    - **`null` veut dire « non lu », jamais « non exposé ».** Une liste vide veut dire « lu, rien trouvé ».
+      Consultez toujours `error` et `source_errors` avant de conclure.
+    - **Vérifiez la fraîcheur.** `stale` indique un serveur muet depuis plus de 3 h, et `collected_at` la date de
+      collecte d'une section. Les sections `integrity` et `code_patterns` ne sont collectées que chaque semaine.
+    - **Comparez la version complète du paquet** (`3.0.13-0ubuntu3.5`) à l'avis de sécurité de la distribution,
+      en suivant la logique de comparaison de dpkg. Ubuntu corrige des failles sans changer la version amont :
+      comparer seulement `3.0.13` donnerait de faux positifs.
+    - **Une version corrigée installée ne suffit pas toujours.** Un service peut tourner avec l'ancienne
+      bibliothèque : consultez `restart_needed`, et `kernel.reboot_required` pour le noyau.
+    - **Un pare-feu vide ne prouve pas qu'un port est exposé :** celui de l'hébergeur reste invisible.
+    - **Le masquage des secrets est au mieux de ses moyens.** Les valeurs libres sont masquées (`***`), mais un
+      secret sous une forme inconnue peut passer : ne republiez pas ces données.
+
+    ## Évolution
+
+    De nouveaux champs peuvent apparaître sans changement de version : ignorez ceux que vous ne connaissez pas.
+    Une section dépend de la version de l'agent du serveur (`agent_version`) : une section absente figure dans
+    `sections_never_received`.
+servers:
+  - url: https://{central}
+    description: Le central StackCard
+    variables:
+      central:
+        default: stackcard.larssen-homelab.fr
+        description: Adresse communiquée par l'administrateur
+security:
+  - bearerAuth: []
+tags:
+  - name: Serveurs
+    description: Identité et état courant des serveurs
+  - name: Sections
+    description: État détaillé d'un serveur, section par section
+paths:
+  /api/v1/servers:
+    get:
+      tags: [Serveurs]
+      operationId: listServers
+      summary: Lister les serveurs
+      responses:
+        '200':
+          description: Tous les serveurs, y compris ceux en attente d'enrôlement ou révoqués (voir `status`).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServerSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/servers/{server}:
+    get:
+      tags: [Serveurs]
+      operationId: getServer
+      summary: Détailler un serveur
+      description: État courant du serveur et état de chaque section, sans son contenu. Pour le contenu, voir la route des sections.
+      parameters:
+        - $ref: '#/components/parameters/Server'
+      responses:
+        '200':
+          description: Le serveur
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ServerDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/servers/{server}/sections/{section}:
+    get:
+      tags: [Sections]
+      operationId: getServerSection
+      summary: Lire le dernier état d'une section
+      description: |
+        Contenu de `data` selon la section. Sauf mention contraire, un champ `null` signifie « non lu », avec une
+        entrée dans `source_errors`. Les dates sont en UTC.
+
+        | Section | `data` |
+        |---|---|
+        | `packages` | Liste des paquets dpkg installés : `package`, `version`, `arch`, `source_package`, `source_version`, `status`, `installed_at`. |
+        | `apt_sources` | `{sources, origins, pro}`. `sources` : `[{file, uri, suite, components}]`. `origins` : pour `php*`, `nodejs`, `apache2`, `libbrotli1`, `linux-image-*`, `docker-ce`, `[{package, version, origins: [{uri, suite}]}]`. `pro` : `{attached, services: [{name, status}]}`, l'état d'Ubuntu Pro. |
+        | `kernel` | `{running, installed, reboot_required, reboot_required_pkgs, boot_time, livepatch}`. `livepatch` : `{kernel, running, check_state, patch_state, version, fixes: [{name, patched}]}`. |
+        | `restart_needed` | `{needrestart, masters}`. `needrestart` : `{kernel_current, kernel_expected, kernel_status, services}`. `masters` : processus maîtres `php-fpm*` et `apache2`, `[{comm, pid, started_at}]`. |
+        | `kernel_surface` | `{sysctl, modules, modprobe}`. `sysctl` : `{clé: valeur}` pour une liste de clés sensibles, `null` pour un sysctl inexistant. `modules` : modules chargés. `modprobe` : lignes `blacklist` et `install`. |
+        | `network` | `{sockets, mptcp_listeners, nft, iptables, iptables_legacy, fail2ban, ufw, services}`. `sockets` : ports en écoute, `[{protocol, address, port, process, pid, public}]`, `public` vaut `false` pour le loopback. `nft` : JSON de `nft -j list ruleset`, sans compteurs. `iptables` et `iptables_legacy` : `{v4, v6}`, les lignes de `iptables-save` dans leur ordre d'application. `fail2ban` : `{enabled, active, jails, config_errors}`, jamais les IP bannies. `ufw` : `{status, logging, default_incoming, default_outgoing, default_routed, rules}`. `services` : services de mitigation `[{name, enabled, active}]`. |
+        | `php` | `{versions, sites}`. `versions` : `[{version, sapis, pools}]`. `sapis` : `fpm`, `apache2`, `cli`, chacun `{active, source, values, php_version, build_date, extensions}`. `values` : toutes les directives ini. `extensions` : `[{name, versions}]`, dont les bibliothèques liées (OpenSSL, libxml, cURL). `pools` : `[{name, file, listen, listen_allowed_clients, user, group, php_values, settings}]`. `sites` : `[{server_name, port, document_root, type, php_version, mode, pool, allow_override}]`. Pour `apache2` (mod_php), `values` ne contient que ce qu'écrivent les fichiers ini : une clé `null` signifie « absente des fichiers », pas « désactivée » ; `php_version`, `build_date` et `extensions` y valent toujours `null`. |
+        | `apache` | `{modules, vhosts, directives}`. `vhosts` : `[{server_name, port, file, line}]`. `directives` : `[{file, line, directive, value, enabled}]` pour `Protocols`, `VirtualDocumentRoot`, `LimitRequestFieldSize`, `AllowOverride`. |
+        | `site_dependencies` | `[{app_dir, sites: [{server_name, port}], composer, applications}]`. `composer` : `[{name, version, dev}]`. `applications` : WordPress et phpMyAdmin, `[{name, version}]`. |
+        | `node_apps` | `{apps: [{name, version, exe, exe_deleted, node_version, listen, user, group, app_dir, process_manager, technologies, dependencies}]}`. `dependencies` : `[{name, version}]`. |
+        | `docker` | `{version, images, containers}`. `images` : `[{repository, tag, digest, created}]`. `containers` : `[{name, image, image_id, image_digest, state, ports}]`. |
+        | `persistence` | `{crons, units, users, authorized_keys, sudoers, github_runners}`, pour repérer une persistance après compromission. `crons` : `[{file, user, ignored, line}]`. `units` : unités systemd hors paquet, `[{name, path, exec_start, drop_in}]`. `users` : `[{name, uid, shell, home}]`. `authorized_keys` : `[{user, file, type, fingerprint, certificate, comment}]`. `sudoers` : `[{file, ignored, line}]`. `github_runners` : `[{service, directory, version}]`. |
+        | `integrity` (hebdomadaire) | `{changed, missing, modules_checked}`. `changed` : fichiers de paquets modifiés selon `debsums`, `[{path, package, sensitive}]`. `missing` : nombre de fichiers manquants. Si `modules_checked` vaut `false`, un module noyau altéré n'apparaît pas dans `changed`. |
+        | `code_patterns` (hebdomadaire) | `{matches, skipped_files, missing_roots, truncated, reason}`. `matches` : motifs trouvés dans les sites, `[{path, line, pattern}]`, jamais le contenu de la ligne. Si `truncated` vaut `true`, la recherche est incomplète (`reason` : `max_matches` ou `deadline`). |
+      parameters:
+        - $ref: '#/components/parameters/Server'
+        - name: section
+          in: path
+          required: true
+          description: Nom de la section
+          schema:
+            $ref: '#/components/schemas/SectionName'
+      responses:
+        '200':
+          description: Le dernier état reçu de la section
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Section'
+              examples:
+                lue:
+                  summary: Section lue
+                  value:
+                    data:
+                      server_id: 1
+                      section: packages
+                      collected_at: '2026-11-01T08:00:00.000000Z'
+                      first_seen_at: '2026-10-30T08:00:00.000000Z'
+                      last_seen_at: '2026-11-01T08:00:00.000000Z'
+                      sha256: 94977bb3632e1dc61346d39c69d90630e4574a0cfb19abe321454dadfa8739ac
+                      error: null
+                      source_errors: {}
+                      data:
+                        - package: openssl
+                          version: 3.0.13-0ubuntu3.5
+                          arch: amd64
+                          source_package: openssl
+                          source_version: 3.0.13-0ubuntu3.5
+                          status: ii
+                          installed_at: '2026-10-15T06:03:59Z'
+                nonLue:
+                  summary: Section non lue, à ne pas prendre pour une absence d'exposition
+                  value:
+                    data:
+                      server_id: 1
+                      section: integrity
+                      collected_at: '2026-11-01T08:00:00.000000Z'
+                      first_seen_at: '2026-11-01T08:00:00.000000Z'
+                      last_seen_at: '2026-11-01T08:00:00.000000Z'
+                      sha256: null
+                      error: not_installed
+                      source_errors: {}
+                      data: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Serveur ou section inconnus, ou section jamais reçue de ce serveur.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Jeton fourni par l'administrateur de StackCard, valable depuis les adresses IP déclarées.
+  parameters:
+    Server:
+      name: server
+      in: path
+      required: true
+      description: '`id` du serveur, tel que renvoyé par la liste'
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    Unauthorized:
+      description: Jeton absent, invalide, expiré ou révoqué.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Adresse IP non autorisée pour ce jeton, ou jeton sans droit de lecture.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Serveur inconnu.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    TooManyRequests:
+      description: Plus de 120 requêtes par minute depuis cette adresse.
+      headers:
+        Retry-After:
+          description: Nombre de secondes à attendre
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    SectionName:
+      type: string
+      enum:
+        - packages
+        - apt_sources
+        - kernel
+        - restart_needed
+        - kernel_surface
+        - network
+        - php
+        - apache
+        - site_dependencies
+        - node_apps
+        - docker
+        - persistence
+        - integrity
+        - code_patterns
+    ServerSummary:
+      type: object
+      required: [id, name, status, stale]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: Nom d'affichage
+        hostname:
+          type: string
+          nullable: true
+        fqdn:
+          type: string
+          nullable: true
+        status:
+          type: string
+          description: '`pending` : jamais enrôlé. `active` : enrôlé. `revoked` : révoqué.'
+          enum: [pending, active, revoked]
+        primary_ip:
+          type: string
+          nullable: true
+        os:
+          type: string
+          nullable: true
+          example: Ubuntu 24.04.1 LTS
+        kernel:
+          type: string
+          nullable: true
+        virtualization:
+          type: string
+          nullable: true
+        apache_version:
+          type: string
+          nullable: true
+        mysql_version:
+          type: string
+          nullable: true
+        docker_version:
+          type: string
+          nullable: true
+        agent_version:
+          type: string
+          nullable: true
+          example: 0.5.2
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date du dernier envoi de l'agent
+        stale:
+          type: boolean
+          description: Vrai si le serveur est muet depuis plus de 3 h ou n'a jamais envoyé.
+    ServerDetail:
+      allOf:
+        - $ref: '#/components/schemas/ServerSummary'
+        - type: object
+          required: [ips, sites, node_apps, docker_containers, firewall, databases, db_users, sections, sections_never_received]
+          properties:
+            ips:
+              type: array
+              items:
+                type: object
+                properties:
+                  interface:
+                    type: string
+                  address:
+                    type: string
+                  prefix:
+                    type: integer
+                    nullable: true
+            sites:
+              type: array
+              items:
+                $ref: '#/components/schemas/Site'
+            node_apps:
+              type: array
+              items:
+                $ref: '#/components/schemas/NodeApp'
+            docker_containers:
+              type: array
+              items:
+                $ref: '#/components/schemas/DockerContainer'
+            firewall:
+              $ref: '#/components/schemas/Ufw'
+            databases:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  size_bytes:
+                    type: integer
+                    nullable: true
+            db_users:
+              type: array
+              items:
+                type: object
+                description: Comptes MySQL ou MariaDB, jamais de hash de mot de passe.
+                properties:
+                  user:
+                    type: string
+                  host:
+                    type: string
+                  grants:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        database:
+                          type: string
+                          nullable: true
+                          description: '`null` pour un droit global'
+                        global:
+                          type: boolean
+                        privileges:
+                          type: array
+                          items:
+                            type: string
+            sections:
+              type: object
+              description: État de chaque section reçue, par nom, sans `data`.
+              additionalProperties:
+                $ref: '#/components/schemas/SectionState'
+            sections_never_received:
+              type: array
+              description: Sections jamais reçues de ce serveur, par exemple avec un agent ancien.
+              items:
+                $ref: '#/components/schemas/SectionName'
+    Site:
+      type: object
+      properties:
+        server_name:
+          type: string
+          nullable: true
+        aliases:
+          type: array
+          nullable: true
+          items:
+            type: string
+        port:
+          type: integer
+          nullable: true
+        https:
+          type: boolean
+        cert_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        type:
+          type: string
+          description: '`php-fpm`, `php-mod`, `node`, `docker`, `proxy` ou `static`, entre autres.'
+        document_root:
+          type: string
+          nullable: true
+        app_dir:
+          type: string
+          nullable: true
+        upstream:
+          type: string
+          nullable: true
+        php_version:
+          type: string
+          nullable: true
+        system_user:
+          type: string
+          nullable: true
+        system_group:
+          type: string
+          nullable: true
+        owner_user:
+          type: string
+          nullable: true
+        owner_group:
+          type: string
+          nullable: true
+        process_manager:
+          type: string
+          nullable: true
+        config_file:
+          type: string
+          nullable: true
+        partial:
+          type: boolean
+          description: Vrai si la configuration du site n'a pu être lue qu'en partie.
+        technologies:
+          type: array
+          nullable: true
+          description: CMS et frameworks détectés
+          items:
+            type: object
+        db_refs:
+          type: array
+          description: Bases référencées par le site, jamais de mot de passe.
+          items:
+            type: object
+            properties:
+              db_name:
+                type: string
+                nullable: true
+              db_user:
+                type: string
+                nullable: true
+              db_host:
+                type: string
+                nullable: true
+              source:
+                type: string
+                nullable: true
+    NodeApp:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        version:
+          type: string
+          nullable: true
+        node_version:
+          type: string
+          nullable: true
+        listen:
+          type: array
+          nullable: true
+          items:
+            type: object
+        user:
+          type: string
+          nullable: true
+        group:
+          type: string
+          nullable: true
+        app_dir:
+          type: string
+          nullable: true
+        process_manager:
+          type: string
+          nullable: true
+        technologies:
+          type: array
+          nullable: true
+          items:
+            type: object
+    DockerContainer:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        image:
+          type: string
+          nullable: true
+        image_version:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        ports:
+          type: array
+          nullable: true
+          items:
+            type: object
+        compose_project:
+          type: string
+          nullable: true
+        compose_service:
+          type: string
+          nullable: true
+        compose_dir:
+          type: string
+          nullable: true
+        restart_policy:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+    Ufw:
+      type: object
+      description: État d'UFW. Pour nftables, iptables et Fail2Ban, voir la section `network`.
+      properties:
+        status:
+          type: string
+          nullable: true
+          description: '`null` si UFW n''est pas installé ou pas remonté.'
+        logging:
+          type: string
+          nullable: true
+        default_incoming:
+          type: string
+          nullable: true
+        default_outgoing:
+          type: string
+          nullable: true
+        default_routed:
+          type: string
+          nullable: true
+        rules:
+          type: array
+          items:
+            type: object
+            properties:
+              position:
+                type: integer
+              destination:
+                type: string
+              action:
+                type: string
+              source:
+                type: string
+              ipv6:
+                type: boolean
+              comment:
+                type: string
+                nullable: true
+    SectionState:
+      type: object
+      required: [first_seen_at, last_seen_at]
+      properties:
+        collected_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date de la collecte sur le serveur
+        first_seen_at:
+          type: string
+          format: date-time
+          description: Depuis quand cet état est observé
+        last_seen_at:
+          type: string
+          format: date-time
+          description: Dernier envoi où cet état était encore valable
+        sha256:
+          type: string
+          nullable: true
+          description: Empreinte de `data`. Elle ne change que si l'état change, donc utile pour éviter de relire une section.
+        error:
+          type: string
+          nullable: true
+          description: '`null` si lue, sinon `timeout`, `not_installed`, `too_large` ou un message. `data` vaut alors `null`.'
+        source_errors:
+          type: object
+          nullable: true
+          description: Sous-sources non lues d'une section par ailleurs collectée. Leur champ dans `data` vaut `null`.
+          additionalProperties:
+            type: string
+          example:
+            nft: not_installed
+    Section:
+      allOf:
+        - $ref: '#/components/schemas/SectionState'
+        - type: object
+          required: [server_id, section]
+          properties:
+            server_id:
+              type: integer
+            section:
+              $ref: '#/components/schemas/SectionName'
+            data:
+              description: Contenu de la section, liste ou objet, voir le tableau de cette route. `null` si `error` est renseigné.

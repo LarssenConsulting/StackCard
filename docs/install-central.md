@@ -203,6 +203,49 @@ et passez-la aux agents avec `--pin-sha256`. Attention : un renouvellement de ce
 **nouvelle clé** bloquera les agents épinglés jusqu'à leur réenrôlement (certbot réutilise la clé
 avec `--reuse-key`).
 
+## 8. API de lecture (optionnel)
+
+Une application externe, par exemple un site qui évalue l'exposition des serveurs à une CVE, peut lire
+l'inventaire. Rien n'est ouvert tant qu'aucun client n'est créé.
+
+**Mise en place.** Dans l'admin, **Clients API > Nouveau** : un nom et l'IP sortante du serveur qui
+appellera l'API (une plage au plus large en `/24` en IPv4, `/48` en IPv6). Puis **Générer le jeton** : il
+n'est affiché qu'une fois et reste valable 365 jours. Le régénérer ou supprimer le client coupe
+immédiatement l'ancien jeton.
+
+```bash
+curl -H 'Authorization: Bearer <jeton>' https://<central>/api/v1/servers
+```
+
+| Route | Contenu |
+|---|---|
+| `GET /api/v1/servers` | Les serveurs : identité, versions, `last_seen_at`, `stale` (muet depuis plus de 3 h) |
+| `GET /api/v1/servers/{id}` | Un serveur : IP, sites, applications Node, conteneurs, UFW, bases, comptes MySQL, état de chaque section sans son contenu |
+| `GET /api/v1/servers/{id}/sections/{nom}` | Dernier état d'une section, avec `data` (schémas : `docs/superpowers/specs/2026-10-14-discover-design.md` §4.7) |
+
+**Fichiers à importer** (`docs/api/`) : `stackcard-read-api.openapi.yaml`, la spécification Swagger à transmettre au
+site consommateur, et `stackcard-read-api.postman_collection.json`, pour tester. Dans Postman, renseignez les
+variables de collection `baseUrl` et `token`, et lancez la collection depuis une adresse autorisée.
+
+**Lire les réponses.** `null` veut dire « non lu », jamais « non exposé » : regardez `error`, `source_errors`,
+`collected_at` et `stale` avant de conclure. Pour une CVE, comparez la version complète du paquet
+(`3.0.13-0ubuntu3.5`) à l'avis de sécurité Ubuntu : Ubuntu corrige des failles sans changer la version amont.
+
+**Sécurité.**
+- Appelez l'API **depuis le serveur du site**, jamais depuis le navigateur : le jeton et l'IP seraient ceux du visiteur.
+- Ces données sont la carte de vos serveurs (versions, comptes, ports, chemins), et leur masquage reste au mieux de ses moyens. Traitez le jeton comme un mot de passe d'administration.
+- Le contrôle porte sur l'adresse de la connexion. **Derrière un reverse proxy ou un CDN**, tout client paraît venir du proxy : soit vous autorisez l'API en direct, soit vous déclarez exactement ce proxy dans `trustProxies`. Ne mettez jamais `*` : n'importe qui pourrait alors falsifier `X-Forwarded-For` et contourner le filtre.
+- Un refus écrit un `warning` dans `storage/logs/laravel.log` et chaque lecture un `info`, si `LOG_LEVEL` les laisse passer.
+- Défense supplémentaire, facultative, dans le VirtualHost :
+
+```apache
+<Location /api/v1/servers>
+    Require ip 203.0.113.10
+</Location>
+```
+
+Les jetons des agents n'ont pas ce droit : un serveur compromis ne peut pas lire le reste de la flotte.
+
 ## Mise à jour
 
 ```bash

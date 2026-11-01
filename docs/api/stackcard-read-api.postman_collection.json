@@ -1,0 +1,898 @@
+{
+  "info": {
+    "name": "StackCard, API de lecture",
+    "description": "Lecture seule. Renseignez les variables de la collection `baseUrl` et `token`, et appelez depuis une adresse IP autorisée pour ce jeton. Le premier appel de la liste remplit `serverId`. Spécification complète : stackcard-read-api.openapi.yaml.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://stackcard.example.com",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serverId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Serveurs",
+      "item": [
+        {
+          "name": "Lister les serveurs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const servers = pm.response.json().data;",
+                  "pm.test('Liste non vide', () => pm.expect(servers).to.be.an('array').that.is.not.empty);",
+                  "if (servers.length) { pm.collectionVariables.set('serverId', String(servers[0].id)); }",
+                  "pm.test('Pas de notes ni de machine_id', () => { pm.expect(pm.response.text()).to.not.include('machine_id'); pm.expect(pm.response.text()).to.not.include('\"notes\"'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers"
+              ]
+            },
+            "description": "Remplit la variable `serverId` avec le premier serveur."
+          },
+          "response": []
+        },
+        {
+          "name": "Détailler un serveur",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const server = pm.response.json().data;",
+                  "pm.test('Sections sans contenu', () => Object.values(server.sections).forEach(s => pm.expect(s).to.not.have.property('data')));",
+                  "pm.test('Champs attendus', () => pm.expect(server).to.include.keys('sites', 'firewall', 'sections', 'sections_never_received'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sections",
+      "description": "Répond 404 pour une section jamais reçue de ce serveur.",
+      "item": [
+        {
+          "name": "packages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('packages'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/packages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "packages"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "apt_sources",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('apt_sources'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/apt_sources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "apt_sources"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "kernel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('kernel'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/kernel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "kernel"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "restart_needed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('restart_needed'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/restart_needed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "restart_needed"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "kernel_surface",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('kernel_surface'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/kernel_surface",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "kernel_surface"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "network",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('network'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/network",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "network"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "php",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('php'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/php",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "php"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "apache",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('apache'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/apache",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "apache"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "site_dependencies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('site_dependencies'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/site_dependencies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "site_dependencies"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "node_apps",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('node_apps'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/node_apps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "node_apps"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "docker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('docker'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/docker",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "docker"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "persistence",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('persistence'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/persistence",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "persistence"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "integrity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('integrity'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/integrity",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "integrity"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "code_patterns",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('code_patterns'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/code_patterns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "code_patterns"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Refus attendus",
+      "item": [
+        {
+          "name": "Sans jeton : 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mauvais jeton : 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "jeton-invalide",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Section inconnue : 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/inconnue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "inconnue"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Serveur inconnu : 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/999999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "999999999"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Écriture : 405",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 405', () => pm.response.to.have.status(405));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -27,5 +27,9 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('inventory', fn (Request $request) => Limit::perMinute(30)
             ->by($request->user()?->currentAccessToken()?->id ?: $request->ip()));
+
+        // Enough to read every section of about 8 servers in a minute. Laravel authenticates before it
+        // throttles, so a wrong token is not counted: a 40-character random token cannot be guessed anyway.
+        RateLimiter::for('read-api', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));
     }
 }
