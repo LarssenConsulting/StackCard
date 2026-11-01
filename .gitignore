@@ -2,3 +2,6 @@
 
 # Certificats locaux (MAMP PRO) — contiennent une clé privée
 _ssl/
+
+# Éléments fournis ponctuellement (specs, captures…) — jamais commités
+_inputs/

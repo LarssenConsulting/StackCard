@@ -66,6 +66,7 @@ class TransportTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.server.shutdown()
+        cls.server.server_close()
         cls.tmp.cleanup()
 
     def setUp(self):
@@ -108,6 +109,49 @@ class TransportTest(unittest.TestCase):
                 pin_sha256="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             )
         self.assertEqual(Recorder.requests, [])
+
+
+class RawRecorder(BaseHTTPRequestHandler):
+    bodies = []
+
+    def do_POST(self):
+        RawRecorder.bodies.append(self.rfile.read(int(self.headers["Content-Length"])))
+        self.send_response(200)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, *args):
+        pass
+
+
+class WireFormatTest(unittest.TestCase):
+    """The body is what the 16 MiB cap measures: compact UTF-8."""
+
+    def post(self, payload):
+        RawRecorder.bodies = []
+        with tempfile.TemporaryDirectory() as tmp:
+            cert, key = os.path.join(tmp, "c.pem"), os.path.join(tmp, "k.pem")
+            sh(f"openssl req -x509 -newkey rsa:2048 -nodes -keyout {shlex.quote(key)} -out {shlex.quote(cert)} "
+               "-days 1 -subj /CN=localhost -addext subjectAltName=DNS:localhost")
+            server = ThreadingHTTPServer(("127.0.0.1", 0), RawRecorder)
+            self.addCleanup(server.server_close)
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(cert, key)
+            server.socket = context.wrap_socket(server.socket, server_side=True)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                transport.post_json(f"https://localhost:{server.server_address[1]}/x", payload, ca_file=cert)
+            finally:
+                server.shutdown()
+                thread.join()
+        return RawRecorder.bodies[0]
+
+    def test_compact_utf8(self):
+        self.assertEqual(self.post({"a": 1, "b": ["é"]}), '{"a":1,"b":["é"]}'.encode("utf-8"))
+
+    def test_a_lone_surrogate_cannot_stop_the_send(self):
+        self.assertEqual(json.loads(self.post({"hostname": "web\udcff"})), {"hostname": "web?"})
 
 
 if __name__ == "__main__":

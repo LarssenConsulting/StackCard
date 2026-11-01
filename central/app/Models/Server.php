@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
@@ -76,6 +77,19 @@ class Server extends Model
     public function snapshots(): HasMany
     {
         return $this->hasMany(Snapshot::class);
+    }
+
+    public function sections(): HasMany
+    {
+        return $this->hasMany(ServerSection::class);
+    }
+
+    /** The newest row of each section, keyed by section name. */
+    public function latestSections(): Collection
+    {
+        $ids = $this->sections()->selectRaw('MAX(id) as id')->groupBy('section')->pluck('id')->all();
+
+        return $this->sections()->whereIn('id', $ids)->get()->keyBy('section');
     }
 
     public function enrollmentTokens(): HasMany

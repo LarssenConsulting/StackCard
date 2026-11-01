@@ -12,7 +12,9 @@ from discover_agent.collectors import sites, techs
 
 _NODE_IN_PATH = re.compile(r"/v?(\d+\.\d+\.\d+)/bin/node(js)?$")
 _DPKG_VERSION = re.compile(r"^(?:\d+:)?(\d+(?:\.\d+){0,3})")
-SYSTEM_NODE = ("/usr/bin/node", "/usr/bin/nodejs", "/usr/local/bin/node")
+_DELETED = " (deleted)"
+# Only these belong to the nodejs package: /usr/local/bin/node is whatever was put there.
+DPKG_NODE = ("/usr/bin/node", "/usr/bin/nodejs")
 
 
 def parse_ss_sockets(text):
@@ -41,6 +43,21 @@ def parse_dpkg_version(text):
     return match.group(1) if match else None
 
 
+def split_deleted(raw):
+    """/proc/<pid>/exe of a replaced binary ends in ' (deleted)' -> (path, deleted)."""
+    if isinstance(raw, str) and raw.endswith(_DELETED):
+        return raw[: -len(_DELETED)], True
+    return raw, False
+
+
+def version_of_exe(exe, deleted, dpkg_version):
+    """The Node version of a binary; `dpkg_version()` is only asked for the package's own."""
+    if exe not in DPKG_NODE:
+        return node_version_from_path(exe)
+    # dpkg describes the new binary, not the one still running.
+    return None if deleted else dpkg_version()
+
+
 def is_node(exe):
     return os.path.basename(exe or "") in ("node", "nodejs")
 
@@ -55,9 +72,7 @@ def collect_node(
     sockets = parse_ss_sockets(runner(["ss", "-Hltnp"]))
     system_version = []
 
-    def version_of(exe):
-        if exe not in SYSTEM_NODE:
-            return node_version_from_path(exe)
+    def dpkg_version():
         if not system_version:
             try:
                 output = runner(["dpkg-query", "-W", "-f", "${Version}", "nodejs"])
@@ -69,7 +84,8 @@ def collect_node(
     apps = {}
     for address, port, pid in sockets:
         # Cluster workers share the socket and the app directory: any of them stands for the app.
-        info = proc_info(pid) if is_node(exe_of(pid)) else None
+        exe, deleted = split_deleted(exe_of(pid))
+        info = proc_info(pid) if is_node(exe) else None
         if not info:
             continue
         key = (info["user"], info["cwd"], info["process_manager"])
@@ -79,7 +95,7 @@ def collect_node(
             app = apps[key] = {
                 "name": name,
                 "version": version,
-                "node_version": version_of(exe_of(pid)),
+                "node_version": version_of_exe(exe, deleted, dpkg_version),
                 "listen": [],
                 "user": info["user"],
                 "group": info["group"],

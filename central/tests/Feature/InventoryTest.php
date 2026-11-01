@@ -204,12 +204,27 @@ it('warns when the machine id differs from the enrolled one', function () {
         ->and($server->refresh()->machine_id)->toBe('abc123');
 });
 
-it('refuses payloads over 5 MB', function () {
+it('refuses payloads over 20 MB', function () {
     [, $token] = enrolledServer();
     $snapshot = snapshotFixture();
-    $snapshot['errors'] = [['collector' => 'apache', 'message' => str_repeat('x', 5 * 1024 * 1024)]];
+    $snapshot['errors'] = [['collector' => 'apache', 'message' => str_repeat('x', 20 * 1024 * 1024)]];
 
     sendInventory($this, $token, $snapshot)->assertStatus(413);
+});
+
+it('accepts a 6 MB payload (sections can weigh several MB)', function () {
+    [$server, $token] = enrolledServer();
+    $snapshot = snapshotFixture();
+    foreach (['packages', 'apache'] as $name) {
+        $snapshot['sections'][$name] = [
+            'collected_at' => '2026-11-01T08:00:00Z', 'error' => null, 'source_errors' => [],
+            'sha256' => str_repeat('a', 64), 'data' => ['blob' => str_repeat('x', 3 * 1024 * 1024)],
+        ];
+    }
+
+    sendInventory($this, $token, $snapshot)->assertOk();
+
+    expect($server->sections()->whereIn('section', ['packages', 'apache'])->whereNull('error')->count())->toBe(2);
 });
 
 it('rate-limits each agent token', function () {

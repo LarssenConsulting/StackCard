@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\DockerContainer;
 use App\Models\NodeApp;
 use App\Models\Server;
+use App\Models\ServerSection;
 use App\Models\Snapshot;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -30,6 +31,10 @@ class IngestSnapshot
 
     private function store(Server $server, array $snapshot, ?string $sourceIp): Snapshot
     {
+        // Sections can weigh megabytes: they live in server_sections, not in the hourly payload.
+        $sections = $snapshot['sections'] ?? [];
+        unset($snapshot['sections']);
+
         $record = $server->snapshots()->create([
             'received_at' => now(),
             'source_ip' => $sourceIp,
@@ -67,8 +72,72 @@ class IngestSnapshot
         $this->storeSites($server, $snapshot['apache']['sites'] ?? [], $nodeApps, $containers);
         $this->storeFirewallRules($server, $snapshot['ufw']['rules'] ?? []);
         $this->storeMysql($server, $snapshot['mysql'] ?? null);
+        $this->storeSections($server, $sections);
 
         return $record;
+    }
+
+    /**
+     * Keep a history per section: a new row only when the state changed, otherwise the latest row
+     * is just marked as seen again. skipped_not_due means "not collected this time" and writes nothing.
+     */
+    private function storeSections(Server $server, array $sections): void
+    {
+        foreach (ServerSection::NAMES as $name) {
+            $envelope = $sections[$name] ?? null;
+            if ($envelope === null || ($envelope['error'] ?? null) === 'skipped_not_due') {
+                continue;
+            }
+
+            $error = $envelope['error'] ?? null;
+            $data = $error === null ? ($envelope['data'] ?? null) : null;
+            $sha256 = $data === null ? null : ($envelope['sha256'] ?? null);
+            $sourceErrors = $envelope['source_errors'] ?? [];
+            // Same encoding as the agent's cap, so a section it let through is not refused here.
+            $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
+            if (strlen(json_encode($data, $flags)) + strlen(json_encode($sourceErrors, $flags)) > ServerSection::MAX_BYTES) {
+                [$error, $data, $sha256, $sourceErrors] = ['too_large', null, null, []];
+            }
+            $collectedAt = isset($envelope['collected_at']) ? Carbon::parse($envelope['collected_at']) : null;
+
+            $latest = $server->sections()->select('id', 'sha256', 'error', 'source_errors', 'collected_at')
+                ->where('section', $name)->orderByDesc('id')->first();
+            if ($latest && $latest->sha256 === $sha256 && $latest->error === $error
+                && $this->canonical($latest->source_errors ?? []) === $this->canonical($sourceErrors)) {
+                $latest->update(['collected_at' => $collectedAt ?? $latest->collected_at, 'last_seen_at' => now()]);
+
+                continue;
+            }
+
+            $server->sections()->create([
+                'section' => $name,
+                'collected_at' => $collectedAt,
+                'sha256' => $sha256,
+                'error' => $error,
+                'source_errors' => $sourceErrors,
+                'data' => $data,
+                'first_seen_at' => now(),
+                'last_seen_at' => now(),
+            ]);
+        }
+    }
+
+    /** JSON with object keys sorted at every level, so key order does not matter. */
+    private function canonical(array $value): string
+    {
+        $sort = function (mixed $item) use (&$sort) {
+            if (! is_array($item)) {
+                return $item;
+            }
+            $item = array_map($sort, $item);
+            if (! array_is_list($item)) {
+                ksort($item);
+            }
+
+            return $item;
+        };
+
+        return json_encode($sort($value));
     }
 
     private function warnings(Server $server, array $snapshot): array

@@ -4,6 +4,27 @@ import json
 import sys
 
 SECRETS = ("S3cret", "IntegrationTestKey")
+SECTION_NAMES = (
+    "packages", "apt_sources", "kernel", "restart_needed", "kernel_surface", "network", "php",
+    "apache", "site_dependencies", "node_apps", "docker", "persistence", "integrity", "code_patterns",
+)
+# These must be collected on the image; the others may legitimately fail with not_installed.
+WITH_DATA = ("packages", "kernel", "network", "php", "apache")
+ACCEPTED_ERRORS = ("not_installed",)
+
+
+def check_sections(snap):
+    sections = snap["sections"]
+    assert set(sections) == set(SECTION_NAMES), sorted(set(SECTION_NAMES) ^ set(sections))
+    for name, env in sections.items():
+        assert env["collected_at"], (name, env)
+        if env["error"] is None:
+            assert len(env["sha256"]) == 64 and env["data"] is not None, (name, env)
+        else:
+            assert env["error"] in ACCEPTED_ERRORS, (name, env["error"])
+            assert env["data"] is None, (name, env)
+    for name in WITH_DATA:
+        assert sections[name]["error"] is None and sections[name]["data"], (name, sections[name])
 
 
 def site(snapshot, name, port):
@@ -44,6 +65,10 @@ def main(path):
 
     static = site(snap, "static.example.test", 80)
     assert static["type"] == "static", static
+
+    check_sections(snap)
+    crons = snap["sections"]["persistence"]["data"]["crons"]
+    assert any("mysqldump" in c["line"] for c in crons), crons
 
     names = {d["name"] for d in snap["mysql"]["databases"]}
     assert {"shop_prod", "api_prod", "orphan_db"} <= names, names

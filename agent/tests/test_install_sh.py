@@ -106,7 +106,10 @@ class InstallScriptTest(unittest.TestCase):
             [shell, INSTALL_SH], env=full_env, stdin=subprocess.DEVNULL,
             capture_output=True, text=True, timeout=30,
         )
-        calls = open(self.log).read().splitlines() if os.path.exists(self.log) else []
+        calls = []
+        if os.path.exists(self.log):
+            with open(self.log) as fh:
+                calls = fh.read().splitlines()
         return proc, calls
 
     def enrolls(self, calls):
@@ -255,6 +258,12 @@ class InstallScriptTest(unittest.TestCase):
             self.assertNotEqual(proc.returncode, 0)
             self.assertEqual(calls, [])
         self.for_each_shell(check)
+
+
+class MessagesTest(unittest.TestCase):
+    def test_supported_releases_are_all_named(self):
+        with open(INSTALL_SH) as fh:
+            self.assertIn("Ubuntu 22.04, 24.04 ou 26.04 attendu", fh.read())
 
 
 if __name__ == "__main__":

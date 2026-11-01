@@ -138,9 +138,9 @@ Utilisez Let's Encrypt (central joignable publiquement) ou une autorité de cert
         SetHandler "proxy:unix:/run/php/php8.4-fpm.sock|fcgi://localhost"
     </FilesMatch>
 
-    # L'API refuse aussi les inventaires de plus de 5 Mo.
+    # L'API refuse aussi les inventaires de plus de 20 Mo.
     <Location /api/v1/inventory>
-        LimitRequestBody 6291456
+        LimitRequestBody 20971520
     </Location>
 
     # Optionnel : n'accepter l'API que depuis le réseau des serveurs.
@@ -159,6 +159,23 @@ Utilisez Let's Encrypt (central joignable publiquement) ou une autorité de cert
 sudo a2enmod ssl proxy_fcgi setenvif rewrite
 sudo a2ensite discover && sudo systemctl reload apache2
 ```
+
+Les envois de l'agent peuvent atteindre 20 Mo (sections détaillées). Dans le `php.ini` de PHP-FPM
+(`/etc/php/8.4/fpm/php.ini`), réglez `post_max_size = 20M` au minimum et `memory_limit = 512M` au
+minimum (environ 24 Mo de mémoire de pointe par Mo de corps de requête), puis rechargez PHP-FPM.
+Un reverse proxy devant le central doit accepter lui aussi 20 Mo.
+
+**Avant de mettre à jour un agent en 0.5** : déployez d'abord le central (`deploy.sh`), car un central
+ancien accepterait l'envoi en ignorant `sections` sans le signaler. Vérifiez aussi la limite du
+corps dans l'Apache de production (`LimitRequestBody 20971520` ci-dessus, et toute valeur plus basse
+d'un autre `VirtualHost` ou `.htaccess`) : si elle reste à 5 Mo, un agent 0.5 reçoit une erreur 413 et
+**tout l'inventaire est refusé**, pas seulement les sections détaillées.
+
+**Sensibilité de la base.** Les sections détaillées (agent 0.5) rassemblent une cartographie fine
+des serveurs : crontabs et règles sudoers masquées, `ExecStart` des unités, clés SSH autorisées
+(empreintes), ports en écoute, paramètres PHP, paquets et versions. Le masquage réduit le risque sans
+le supprimer. Traitez la base du central comme sensible : accès restreint, sauvegardes chiffrées,
+administrateurs limités et authentification à deux facteurs (déjà imposée).
 
 Si le central est derrière un reverse proxy, configurez les proxys de confiance de Laravel, sinon
 l'« IP source » enregistrée pour chaque envoi sera celle du proxy.

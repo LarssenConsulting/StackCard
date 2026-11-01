@@ -11,6 +11,7 @@ use App\Filament\Resources\Servers\RelationManagers\DbUsersRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\DockerContainersRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\FirewallRulesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\NodeAppsRelationManager;
+use App\Filament\Resources\Servers\RelationManagers\SectionsRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SitesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SnapshotsRelationManager;
 use App\Filament\Resources\Servers\Schemas\ServerForm;
@@ -61,6 +62,7 @@ class ServerResource extends Resource
             FirewallRulesRelationManager::class,
             DatabasesRelationManager::class,
             DbUsersRelationManager::class,
+            SectionsRelationManager::class,
             SnapshotsRelationManager::class,
         ];
     }

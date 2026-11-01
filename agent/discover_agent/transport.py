@@ -81,7 +81,9 @@ def post_json(url, payload, token=None, ca_file=None, pin_sha256=None, timeout=D
         if token:
             headers["Authorization"] = f"Bearer {token}"
         path = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
-        connection.request("POST", path, body=json.dumps(payload).encode(), headers=headers)
+        # Compact UTF-8, the encoding the section caps are measured in.
+        body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8", "replace")
+        connection.request("POST", path, body=body, headers=headers)
         response = connection.getresponse()
         raw = response.read()
         try:

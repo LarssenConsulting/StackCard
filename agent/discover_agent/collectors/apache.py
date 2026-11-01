@@ -11,6 +11,7 @@ _VHOST_CLOSE = re.compile(r"^</VirtualHost\s*>", re.IGNORECASE)
 _LOCATION_OPEN = re.compile(r"^<Location\s+\"?([^\">]*)\"?\s*>", re.IGNORECASE)
 _LOCATION_CLOSE = re.compile(r"^</Location\s*>", re.IGNORECASE)
 _FPM_HANDLER = re.compile(r"proxy:unix:([^|\"]+)\|", re.IGNORECASE)
+_MODULE_LINE = re.compile(r"^\s*(\w+_module)\b", re.MULTILINE)
 _USE_MACRO = re.compile(r"^\s*Use\s+\S", re.IGNORECASE | re.MULTILINE)
 
 # Only variables in these directives change what we report about a site.
@@ -24,6 +25,11 @@ def parse_ctl_s(text):
         if location not in seen:
             seen.append(location)
     return seen
+
+
+def parse_ctl_m(text):
+    """Names of the loaded modules in `apache2ctl -M` output, e.g. {"rewrite_module"}."""
+    return set(_MODULE_LINE.findall(text))
 
 
 _MACRO_LINE = re.compile(
@@ -83,7 +89,8 @@ def _split_args(value):
 
 
 def _new_block(header):
-    port_match = re.search(r":(\d+)", header)
+    # The first address that ends in a port; [2001:db8::1]:80 gives 80, not 2001.
+    port_match = re.search(r":(\d+)(?=\s|$)", header)
     return {
         "server_name": None,
         "aliases": [],
@@ -155,8 +162,11 @@ def parse_vhosts_text(text):
     return blocks
 
 
-def load_vhosts(runner=util.run, reader=util.read_text):
-    """Return the vhosts Apache actually loads, each with its config_file."""
+def load_vhosts(runner=util.run, reader=util.read_regular_file):
+    """Return the vhosts Apache actually loads, each with its config_file.
+
+    `apache2ctl -S` can name a file under a webroot: it is read like any site file.
+    """
     ctl_output = runner(["apache2ctl", "-S"])
     locations = parse_ctl_s(ctl_output)
     parsed = {}
@@ -169,7 +179,7 @@ def load_vhosts(runner=util.run, reader=util.read_text):
         block = blocks.get(line)
         if block is None:
             continue
-        vhost = dict(block, config_file=path)
+        vhost = dict(block, config_file=path, line=line)
         vhost["partial"] = block["partial"] or uses_macro
         vhosts.append(vhost)
     # Their directives live in the macro definition: report them as partial

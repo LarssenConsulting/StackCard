@@ -129,6 +129,624 @@
       {"to": "22/tcp", "action": "LIMIT IN", "from": "Anywhere", "ipv6": true, "comment": null}
     ]
   },
+  "sections": {
+    "packages": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "8fecff9c5627e9de599f8af36dbfcd56e9259fc229e3bfacca0fe549bd287932",
+      "error": null,
+      "source_errors": {},
+      "data": [
+        {
+          "package": "apache2",
+          "version": "2.4.58-1ubuntu8.5",
+          "arch": "amd64",
+          "source_package": "apache2",
+          "source_version": "2.4.58-1ubuntu8.5",
+          "status": "ii",
+          "installed_at": "2026-09-12T06:31:02Z"
+        },
+        {
+          "package": "libssl3t64",
+          "version": "3.0.13-0ubuntu3.4",
+          "arch": "amd64",
+          "source_package": "openssl",
+          "source_version": "3.0.13-0ubuntu3.4",
+          "status": "ii",
+          "installed_at": "2026-10-20T06:12:44Z"
+        },
+        {
+          "package": "linux-image-6.8.0-45-generic",
+          "version": "6.8.0-45.45",
+          "arch": "amd64",
+          "source_package": "linux",
+          "source_version": "6.8.0-45.45",
+          "status": "ii",
+          "installed_at": "2026-08-02T05:10:00Z"
+        },
+        {
+          "package": "php8.3-fpm",
+          "version": "8.3.6-0ubuntu0.24.04.2",
+          "arch": "amd64",
+          "source_package": "php8.3",
+          "source_version": "8.3.6-0ubuntu0.24.04.2",
+          "status": "ii",
+          "installed_at": null
+        }
+      ]
+    },
+    "apt_sources": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "a25ba014da763c83573a173456828dab81d417195408f5f0abc736dd7ebf73d7",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "sources": [
+          {
+            "file": "/etc/apt/sources.list.d/ubuntu.sources",
+            "uri": "http://archive.ubuntu.com/ubuntu",
+            "suite": "noble",
+            "components": [
+              "main",
+              "universe"
+            ]
+          },
+          {
+            "file": "/etc/apt/sources.list.d/ubuntu.sources",
+            "uri": "http://archive.ubuntu.com/ubuntu",
+            "suite": "noble-updates",
+            "components": [
+              "main",
+              "universe"
+            ]
+          }
+        ],
+        "origins": [
+          {
+            "package": "apache2",
+            "version": "2.4.58-1ubuntu8.5",
+            "origins": [
+              {
+                "uri": "http://archive.ubuntu.com/ubuntu",
+                "suite": "noble-updates"
+              }
+            ]
+          },
+          {
+            "package": "linux-image-6.8.0-45-generic",
+            "version": "6.8.0-45.45",
+            "origins": [
+              {
+                "uri": "http://archive.ubuntu.com/ubuntu",
+                "suite": "noble-updates"
+              }
+            ]
+          }
+        ],
+        "pro": {
+          "attached": false,
+          "services": []
+        }
+      }
+    },
+    "kernel": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "29566ce65219e0c9ca6fb8360d70d1d4febb7e8f4414692467f87a80fd530ca1",
+      "error": null,
+      "source_errors": {
+        "livepatch": "not_installed"
+      },
+      "data": {
+        "running": "6.8.0-45-generic",
+        "installed": [
+          "6.8.0-45-generic",
+          "6.8.0-48-generic"
+        ],
+        "reboot_required": true,
+        "reboot_required_pkgs": [
+          "linux-image-6.8.0-48-generic"
+        ],
+        "boot_time": "2026-10-02T05:41:09Z",
+        "livepatch": null
+      }
+    },
+    "restart_needed": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "194157f14f2cfe17f437545a4ccbed60cd3e252a66a465c7150fd58d1c6f680a",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "needrestart": {
+          "kernel_current": "6.8.0-45-generic",
+          "kernel_expected": "6.8.0-48-generic",
+          "kernel_status": 3,
+          "services": [
+            "ssh.service"
+          ]
+        },
+        "masters": [
+          {
+            "comm": "apache2",
+            "pid": 812,
+            "started_at": "2026-10-02T05:42:11Z"
+          },
+          {
+            "comm": "php-fpm8.3",
+            "pid": 790,
+            "started_at": "2026-10-02T05:42:09Z"
+          }
+        ]
+      }
+    },
+    "kernel_surface": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "c601d27455e751a5c74439c7e109c2aab728560e547a71d7ef987ca7c3640286",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "sysctl": {
+          "net.mptcp.enabled": null,
+          "net.ipv4.tcp_migrate_req": "0",
+          "kernel.unprivileged_userns_clone": "1",
+          "user.max_user_namespaces": "31514",
+          "kernel.unprivileged_bpf_disabled": "2",
+          "kernel.kptr_restrict": "1",
+          "kernel.dmesg_restrict": "1",
+          "net.ipv4.ip_forward": "0",
+          "net.ipv6.conf.all.forwarding": "0"
+        },
+        "modules": [
+          "nf_tables",
+          "nft_chain_nat",
+          "overlay"
+        ],
+        "modprobe": [
+          "blacklist pcspkr",
+          "install dccp /bin/false"
+        ]
+      }
+    },
+    "network": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "6bab01542b0780742d27d372ecce2ce5f2c3d1d5e39820d6efee00e54d504a4b",
+      "error": null,
+      "source_errors": {
+        "nft": "not_installed"
+      },
+      "data": {
+        "sockets": [
+          {
+            "protocol": "tcp",
+            "address": "0.0.0.0",
+            "port": 443,
+            "process": "apache2",
+            "pid": 812,
+            "public": true
+          },
+          {
+            "protocol": "tcp",
+            "address": "127.0.0.1",
+            "port": 3306,
+            "process": "mysqld",
+            "pid": 1042,
+            "public": false
+          }
+        ],
+        "mptcp_listeners": [],
+        "nft": null,
+        "ufw": {
+          "status": "active",
+          "logging": "on (low)",
+          "default_incoming": "deny",
+          "default_outgoing": "allow",
+          "default_routed": "disabled",
+          "rules": [
+            {
+              "to": "22/tcp",
+              "action": "LIMIT IN",
+              "from": "Anywhere",
+              "ipv6": false,
+              "comment": null
+            }
+          ]
+        },
+        "services": [
+          {
+            "name": "cve98432-filter.service",
+            "enabled": "not-found",
+            "active": "inactive"
+          }
+        ]
+      }
+    },
+    "php": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "ae1517254ae5272c35a3bd38f5e0b3e2f59ac79f4ea3aed383dab80cd2f065f7",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "versions": [
+          {
+            "version": "8.3",
+            "sapis": {
+              "cli": {
+                "active": true,
+                "source": "php -i",
+                "values": {
+                  "session.upload_progress.enabled": "On",
+                  "session.serialize_handler": "php",
+                  "session.save_handler": "files",
+                  "session.save_path": "",
+                  "disable_functions": "",
+                  "allow_url_include": "Off",
+                  "allow_url_fopen": "On",
+                  "open_basedir": "no value",
+                  "expose_php": "Off",
+                  "display_errors": "On",
+                  "phar.readonly": "On",
+                  "cgi.fix_pathinfo": "1"
+                },
+                "php_version": "8.3.6",
+                "build_date": "Apr 15 2024 19:21:47",
+                "extensions": [
+                  {
+                    "name": "Core",
+                    "versions": {
+                      "PHP Version": "8.3.6"
+                    }
+                  },
+                  {
+                    "name": "curl",
+                    "versions": {
+                      "SSL Version": "OpenSSL/3.0.13",
+                      "cURL Information": "8.5.0"
+                    }
+                  },
+                  {
+                    "name": "openssl",
+                    "versions": {
+                      "OpenSSL Header Version": "OpenSSL 3.0.13 30 Jan 2024",
+                      "OpenSSL Library Version": "OpenSSL 3.0.13 30 Jan 2024"
+                    }
+                  },
+                  {
+                    "name": "Zend OPcache",
+                    "versions": {}
+                  }
+                ]
+              },
+              "fpm": {
+                "active": true,
+                "source": "php -i",
+                "values": {
+                  "session.upload_progress.enabled": "On",
+                  "session.serialize_handler": "php",
+                  "session.save_handler": "files",
+                  "session.save_path": "",
+                  "disable_functions": "",
+                  "allow_url_include": "Off",
+                  "allow_url_fopen": "On",
+                  "open_basedir": "no value",
+                  "expose_php": "Off",
+                  "display_errors": "Off",
+                  "phar.readonly": "On",
+                  "cgi.fix_pathinfo": "1"
+                },
+                "php_version": "8.3.6",
+                "build_date": "Apr 15 2024 19:21:47",
+                "extensions": [
+                  {
+                    "name": "Core",
+                    "versions": {
+                      "PHP Version": "8.3.6"
+                    }
+                  },
+                  {
+                    "name": "curl",
+                    "versions": {
+                      "SSL Version": "OpenSSL/3.0.13",
+                      "cURL Information": "8.5.0"
+                    }
+                  },
+                  {
+                    "name": "openssl",
+                    "versions": {
+                      "OpenSSL Header Version": "OpenSSL 3.0.13 30 Jan 2024",
+                      "OpenSSL Library Version": "OpenSSL 3.0.13 30 Jan 2024"
+                    }
+                  },
+                  {
+                    "name": "Zend OPcache",
+                    "versions": {}
+                  }
+                ]
+              },
+              "apache2": {
+                "active": false,
+                "source": "ini",
+                "values": null,
+                "php_version": null,
+                "build_date": null,
+                "extensions": null
+              }
+            },
+            "pools": [
+              {
+                "name": "shop",
+                "file": "/etc/php/8.3/fpm/pool.d/shop.conf",
+                "listen": "/run/php/php8.3-fpm-shop.sock",
+                "listen_allowed_clients": null,
+                "user": "shop",
+                "group": "shop",
+                "php_values": [
+                  {
+                    "directive": "php_admin_value",
+                    "key": "open_basedir",
+                    "value": "/var/www/shop:/tmp"
+                  }
+                ],
+                "settings": {
+                  "pm": "dynamic",
+                  "security.limit_extensions": ".php",
+                  "clear_env": "yes"
+                }
+              }
+            ]
+          }
+        ],
+        "sites": [
+          {
+            "server_name": "shop.example.com",
+            "port": 443,
+            "document_root": "/var/www/shop/public",
+            "type": "php-fpm",
+            "php_version": "8.3",
+            "mode": "fpm",
+            "pool": "shop",
+            "allow_override": "All"
+          }
+        ]
+      }
+    },
+    "apache": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "8024dbe60b73e87432eda02b3a2de608e57072d28b9237e1f2f864d68d5179b9",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "modules": [
+          "proxy_fcgi_module",
+          "rewrite_module",
+          "ssl_module"
+        ],
+        "vhosts": [
+          {
+            "server_name": "shop.example.com",
+            "port": 443,
+            "file": "/etc/apache2/sites-enabled/shop.conf",
+            "line": 1
+          }
+        ],
+        "directives": [
+          {
+            "file": "/etc/apache2/conf-available/security.conf",
+            "line": 25,
+            "directive": "ServerTokens",
+            "value": "Prod",
+            "enabled": true
+          },
+          {
+            "file": "/etc/apache2/sites-available/shop.conf",
+            "line": 9,
+            "directive": "AllowOverride",
+            "value": "All",
+            "enabled": true
+          }
+        ]
+      }
+    },
+    "site_dependencies": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "99d1115be24d8edf4cbfa736f30de79fb30a3672ded49681d627412a0fd0751f",
+      "error": null,
+      "source_errors": {},
+      "data": [
+        {
+          "app_dir": "/var/www/shop",
+          "sites": [
+            {
+              "server_name": "shop.example.com",
+              "port": 443
+            }
+          ],
+          "composer": [
+            {
+              "name": "guzzlehttp/guzzle",
+              "version": "7.8.1",
+              "dev": false
+            },
+            {
+              "name": "laravel/framework",
+              "version": "11.9.0",
+              "dev": false
+            },
+            {
+              "name": "phpunit/phpunit",
+              "version": "11.2.1",
+              "dev": true
+            }
+          ],
+          "applications": [
+            {
+              "name": "WordPress",
+              "version": "6.6.2"
+            }
+          ]
+        }
+      ]
+    },
+    "node_apps": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "cc10de39792ff3c013bee17deaa804c89b0640792a0658a4ab7f94eeddfa6a27",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "apps": [
+          {
+            "name": "api",
+            "version": "1.4.0",
+            "exe": "/usr/bin/node",
+            "exe_deleted": false,
+            "node_version": "20.11.1",
+            "listen": [
+              {
+                "address": "127.0.0.1",
+                "port": 3000
+              }
+            ],
+            "user": "api",
+            "group": "api",
+            "app_dir": "/srv/api",
+            "process_manager": "systemd",
+            "technologies": [
+              {
+                "name": "Express",
+                "version": "4.19.2"
+              }
+            ],
+            "dependencies": [
+              {
+                "name": "express",
+                "version": "4.19.2"
+              },
+              {
+                "name": "lodash",
+                "version": "4.17.21"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "docker": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "f220bfe94c4adeb76bc6c0626042a19f1d554ccec8d98454f542033496da2973",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "version": "27.3.1",
+        "images": [
+          {
+            "repository": "louislam/uptime-kuma",
+            "tag": "1",
+            "digest": "sha256:abababababababababababababababababababababababababababababababab",
+            "created": "2026-09-01T10:00:00Z"
+          }
+        ],
+        "containers": [
+          {
+            "name": "uptime-kuma",
+            "image": "louislam/uptime-kuma:1",
+            "image_id": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+            "image_digest": "sha256:abababababababababababababababababababababababababababababababab",
+            "state": "running",
+            "ports": [
+              {
+                "address": "127.0.0.1",
+                "port": 3001,
+                "container_port": 3001,
+                "protocol": "tcp"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "persistence": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "610090f6ef620089551c45288df5a0413033bb9049f5c893d3e51c61376ec29f",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "crons": [
+          {
+            "file": "/etc/cron.d/backup",
+            "user": "root",
+            "ignored": false,
+            "line": "0 3 * * * root /usr/local/bin/backup.sh"
+          }
+        ],
+        "units": [
+          {
+            "name": "api.service",
+            "path": "/etc/systemd/system/api.service",
+            "exec_start": "/usr/bin/node /srv/api/server.js",
+            "drop_in": false
+          }
+        ],
+        "users": [
+          {
+            "name": "deploy",
+            "uid": 1001,
+            "shell": "/bin/bash",
+            "home": "/home/deploy"
+          }
+        ],
+        "authorized_keys": [
+          {
+            "user": "deploy",
+            "file": "/home/deploy/.ssh/authorized_keys",
+            "type": "ssh-ed25519",
+            "fingerprint": "SHA256:QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ",
+            "certificate": false,
+            "comment": "deploy@laptop"
+          }
+        ],
+        "sudoers": [
+          {
+            "file": "/etc/sudoers.d/deploy",
+            "ignored": false,
+            "line": "deploy ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart api"
+          }
+        ],
+        "github_runners": []
+      }
+    },
+    "integrity": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "a8bed463ab8b55d6b9644e058809531429581f5a8b527b28fcf13494b669b756",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "changed": [
+          {
+            "path": "/usr/bin/ssh",
+            "package": "openssh-client",
+            "sensitive": true
+          }
+        ],
+        "missing": 0,
+        "modules_checked": true
+      }
+    },
+    "code_patterns": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "c19833d895e720bf82c4f6bf769687731b05c6f91e0b4ed0ff97957fe28eafae",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "matches": [
+          {
+            "path": "/var/www/shop/wp-content/uploads/x.php",
+            "line": 1,
+            "pattern": "php-in-uploads"
+          }
+        ],
+        "skipped_files": 2,
+        "missing_roots": [],
+        "truncated": false
+      }
+    }
+  },
   "errors": [
     {"collector": "apache", "message": "legacy.example.com: ValueError: weird vhost"}
   ]

@@ -89,6 +89,11 @@ JWT_SECRET=S3cret-jwt
 EOF
 chown -R app-api:app-api /srv/api
 
+# A trapped cron: the section `persistence` must mask the password.
+cat > /etc/cron.d/backup <<'EOF'
+0 3 * * * root mysqldump -u root -pS3cret-cron shop_prod > /dev/null
+EOF
+
 service mariadb start
 mysql <<'EOF'
 CREATE DATABASE shop_prod;

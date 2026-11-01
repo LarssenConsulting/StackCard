@@ -102,5 +102,47 @@ class ParsersTest(unittest.TestCase):
         self.assertIsNone(node.parse_dpkg_version(""))
 
 
+class SystemNodeVersionTest(unittest.TestCase):
+    def apps(self, exe, dpkg=lambda: "20.18.0-1nodesource1"):
+        calls = []
+
+        def run(cmd, **kw):
+            calls.append(cmd[0])
+            if cmd[0] == "ss":
+                return 'LISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:(("node",pid=1234,fd=20))\n'
+            return dpkg()
+
+        apps = collect(runner=run, exe_of=lambda pid: exe)
+        return apps, calls
+
+    def test_deleted_dpkg_binary_is_kept_without_a_version(self):
+        apps, calls = self.apps("/usr/bin/node (deleted)")
+        self.assertEqual([a["app_dir"] for a in apps], ["/srv/api"])
+        self.assertIsNone(apps[0]["node_version"])
+        self.assertNotIn("dpkg-query", calls)
+
+    def test_deleted_binary_under_nvm_keeps_the_version_of_its_path(self):
+        apps, _ = self.apps("/home/u/.nvm/versions/node/v22.11.0/bin/node (deleted)")
+        self.assertEqual(apps[0]["node_version"], "22.11.0")
+
+    def test_usr_local_bin_node_is_not_the_dpkg_package(self):
+        apps, calls = self.apps("/usr/local/bin/node")
+        self.assertEqual(len(apps), 1)
+        self.assertIsNone(apps[0]["node_version"])
+        self.assertNotIn("dpkg-query", calls)
+
+    def test_nodejs_binary_uses_dpkg(self):
+        apps, _ = self.apps("/usr/bin/nodejs")
+        self.assertEqual(apps[0]["node_version"], "20.18.0")
+
+    def test_section_and_collector_share_the_constants(self):
+        from discover_agent.sections import node_apps
+
+        self.assertIs(node_apps.node.DPKG_NODE, node.DPKG_NODE)
+        self.assertEqual(node.split_deleted("/usr/bin/node (deleted)"), ("/usr/bin/node", True))
+        self.assertEqual(node.split_deleted("/usr/bin/node"), ("/usr/bin/node", False))
+        self.assertEqual(node.split_deleted(None), (None, False))
+
+
 if __name__ == "__main__":
     unittest.main()

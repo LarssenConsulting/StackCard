@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\ServerSection;
 use App\Models\Site;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -17,6 +18,21 @@ class InventoryRequest extends FormRequest
         return true;
     }
 
+    /**
+     * The global TrimStrings / ConvertEmptyStringsToNull middleware would rewrite `data` and
+     * `source_errors` ("" becomes null, padded strings are trimmed), so a set-but-empty value like
+     * `disable_functions` would look absent and the stored data would no longer match its sha256.
+     * The sections are therefore taken from the raw body.
+     */
+    protected function prepareForValidation(): void
+    {
+        $raw = json_decode($this->getContent(), true);
+        if (is_array($raw) && array_key_exists('sections', $raw)) {
+            $this->merge(['sections' => $raw['sections']]);
+        }
+        unset($raw);
+    }
+
     public function rules(): array
     {
         $name = ['nullable', 'string', 'max:255'];
@@ -27,6 +43,38 @@ class InventoryRequest extends FormRequest
             ? ['prohibited']
             : ['present', 'array', "max:{$max}"];
 
+        return [...$this->baseRules($name, $path, $listOf), ...$this->sectionRules()];
+    }
+
+    /**
+     * Added by agent 0.5.0, optional. Rules are listed per known section name (no wildcard) and
+     * `data` is only checked to be an array: the central never interprets it, and walking
+     * thousands of nested rows would be costly. Unknown section names are never validated, so
+     * they are dropped from validated().
+     */
+    private function sectionRules(): array
+    {
+        $rules = ['sections' => ['sometimes', 'nullable', 'array']];
+        foreach (ServerSection::NAMES as $section) {
+            $key = "sections.{$section}";
+            $rules += [
+                $key => ['sometimes', 'array'],
+                "{$key}.collected_at" => ['nullable', 'date'],
+                "{$key}.sha256" => [
+                    Rule::requiredIf(fn () => data_get($this->input('sections'), "{$section}.data") !== null),
+                    'nullable', 'string', 'regex:/^[0-9a-f]{64}$/',
+                ],
+                "{$key}.error" => ['nullable', 'string', 'max:4000'],
+                "{$key}.source_errors" => ['sometimes', 'nullable', 'array', 'max:500'],
+                "{$key}.data" => ['nullable', 'array'],
+            ];
+        }
+
+        return $rules;
+    }
+
+    private function baseRules(array $name, array $path, \Closure $listOf): array
+    {
         return [
             'schema_version' => ['required', 'integer', Rule::in([1])],
             'collected_at' => ['required', 'date'],

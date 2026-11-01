@@ -86,3 +86,16 @@ class CollectFirewallTest(unittest.TestCase):
 
         with self.assertRaises(util.CommandError):
             firewall.collect_firewall(runner=runner, has_ufw=lambda: True)
+
+
+class CommentMaskingTest(unittest.TestCase):
+    OUTPUT = (
+        "Status: active\n\nTo   Action   From\n--   ------   ----\n"
+        "22/tcp   ALLOW IN   Anywhere   # password=S3cret\n"
+        "80/tcp   ALLOW IN   Anywhere   # site vitrine\n"
+    )
+
+    def test_comment_secret_is_masked_for_both_keys(self):
+        rules = firewall.parse_status(self.OUTPUT)["rules"]
+        self.assertEqual(rules[0]["comment"], "password=***")
+        self.assertEqual(rules[1]["comment"], "site vitrine")

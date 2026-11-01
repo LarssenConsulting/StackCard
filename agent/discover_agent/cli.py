@@ -5,13 +5,15 @@ import json
 import socket
 import sys
 
-from discover_agent import __version__, config, snapshot, transport, util
+from discover_agent import __version__, config, sections, snapshot, transport, util
 
 ENROLL_PATH = "/api/v1/enroll"
 INVENTORY_PATH = "/api/v1/inventory"
 TIMER = "discover-agent.timer"
 # Enrolled (the token is used up) but the first inventory was not delivered: the timer retries it.
 EXIT_ENROLLED_SEND_FAILED = 3
+# The socket timeout also bounds writing the body, up to 20 MiB on a slow link.
+INVENTORY_TIMEOUT = 300
 
 
 def identity():
@@ -59,22 +61,31 @@ def cmd_enroll(args, paths):
     if status != 201 or not body.get("token"):
         _error(f"Enrôlement refusé (HTTP {status}) : {body.get('message', '')}")
         return 1
-    cfg = config.Config(url=url, token=body["token"], ca_file=args.ca_file, pin_sha256=args.pin_sha256)
+    previous = config.load(paths)
+    cfg = config.Config(
+        url=url, token=body["token"], ca_file=args.ca_file, pin_sha256=args.pin_sha256,
+        weekly_interval_days=previous.weekly_interval_days if previous else config.DEFAULT_WEEKLY_INTERVAL_DAYS,
+    )
     config.save(paths, cfg)
     print(f"Serveur enrôlé (id {body.get('server_id')}).")
     enable_timer()
-    return EXIT_ENROLLED_SEND_FAILED if send_inventory(cfg, paths) else 0
+    # The weekly sections take minutes and belong in the sandbox: the timer runs them.
+    return EXIT_ENROLLED_SEND_FAILED if send_inventory(cfg, paths, weekly=False) else 0
 
 
-def send_inventory(cfg, paths):
-    snap = snapshot.build_snapshot()
+def send_inventory(cfg, paths, weekly=True):
     state = config.load_state(paths)
-    state["last_attempt_at"] = util.now_utc()
+    now = util.now_utc()
+    due = sections.due_weekly(state, cfg.weekly_interval_days, now) if weekly else set()
+    snap = snapshot.build_snapshot(sections_due=due)
+    # Saved below whatever the send does: a failing central must not rerun them every hour.
+    sections.record_attempt(state, snap.get("sections", {}), now)
+    state["last_attempt_at"] = now
     state["collector_errors"] = snap.get("errors", [])
     try:
         status, body = transport.post_json(
             cfg.url + INVENTORY_PATH, snap,
-            token=cfg.token, ca_file=cfg.ca_file, pin_sha256=cfg.pin_sha256,
+            token=cfg.token, ca_file=cfg.ca_file, pin_sha256=cfg.pin_sha256, timeout=INVENTORY_TIMEOUT,
         )
     except Exception as exc:
         status, error = None, _describe(exc)
@@ -84,6 +95,8 @@ def send_inventory(cfg, paths):
     state["last_error"] = error
     if error is None:
         state["last_success_at"] = state["last_attempt_at"]
+        # Only a delivered result moves the weekly schedule; a lost one is retried 24 h after the attempt.
+        sections.record_weekly(state, snap.get("sections", {}), cfg.weekly_interval_days, now)
     else:
         state.setdefault("last_success_at", None)
     config.save_state(paths, state)
@@ -103,7 +116,9 @@ def cmd_run(args, paths):
 
 
 def cmd_collect(args, paths):
-    print(json.dumps(snapshot.build_snapshot(), indent=2, ensure_ascii=False))
+    # Weekly (level 3) sections run only with --full; collect never touches state.json.
+    snap = snapshot.build_snapshot(sections_due=set(sections.WEEKLY)) if args.full else snapshot.build_snapshot()
+    print(json.dumps(snap, indent=2, ensure_ascii=False))
     return 0
 
 
@@ -124,7 +139,11 @@ def cmd_status(args, paths):
     if state.get("last_error"):
         print(f"Dernière erreur : {state['last_error']}")
     for item in state.get("collector_errors", []):
-        print(f"Erreur de collecte [{item['collector']}] : {item['message']}")
+        collector, message = item["collector"], item["message"]
+        if collector.startswith("sections."):
+            print(f"Section en panne [{collector[len('sections.'):]}] : {message}")
+        else:
+            print(f"Erreur de collecte [{collector}] : {message}")
     return 0
 
 
@@ -140,8 +159,11 @@ def build_parser():
     enroll.add_argument("--pin-sha256")
     enroll.set_defaults(handler=cmd_enroll)
 
+    collect = commands.add_parser("collect", help="Afficher l'inventaire sans l'envoyer")
+    collect.add_argument("--full", action="store_true", help="exécuter aussi les sections hebdomadaires (lent)")
+    collect.set_defaults(handler=cmd_collect)
+
     for name, handler, text in (
-        ("collect", cmd_collect, "Afficher l'inventaire sans l'envoyer"),
         ("run", cmd_run, "Collecter et envoyer l'inventaire"),
         ("status", cmd_status, "Afficher l'état de l'agent"),
     ):

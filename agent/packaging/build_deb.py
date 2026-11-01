@@ -24,6 +24,7 @@ Version: {version}
 Architecture: all
 Maintainer: Larssen Consulting <noreply@larssen-consulting.com>
 Depends: python3 (>= 3.10), iproute2, openssl
+Suggests: debsums, needrestart, nftables
 Section: admin
 Priority: optional
 Description: Discover inventory agent

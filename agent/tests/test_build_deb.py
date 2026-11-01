@@ -73,6 +73,20 @@ class BuildDebTest(unittest.TestCase):
         self.assertFalse(any("__pycache__" in name or name.endswith(".pyc") for name in members))
         self.assertFalse(any("/tests" in name for name in members))
 
+    def test_deb_suggests_not_recommends(self):
+        with self.tar("control.tar.gz") as tar:
+            control = tar.extractfile("./control").read().decode()
+        self.assertIn("Suggests: debsums, needrestart, nftables\n", control)
+        self.assertNotIn("Recommends", control)
+
+    def test_sections_package_and_service_limits_are_shipped(self):
+        with self.tar("data.tar.gz") as tar:
+            names = tar.getnames()
+            service = tar.extractfile("./lib/systemd/system/discover-agent.service").read().decode()
+        self.assertTrue(any(n.endswith("discover_agent/sections/defaults.py") for n in names))
+        for line in ("TimeoutStartSec=30min", "Nice=10", "IOSchedulingClass=idle"):
+            self.assertIn(line, service)
+
 
 if __name__ == "__main__":
     unittest.main()

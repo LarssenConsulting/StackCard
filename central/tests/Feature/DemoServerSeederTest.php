@@ -16,5 +16,7 @@ it('creates a fake server with PHP sites, Node apps and Docker containers, and r
         ->and($server->dockerContainers()->count())->toBe(4)
         ->and($server->sites()->where('type', 'docker')->sole()->dockerContainer->name)->toBe('uptime-kuma')
         ->and($server->firewallRules()->count())->toBe(6)
-        ->and($server->snapshots()->count())->toBe(2);
+        ->and($server->snapshots()->count())->toBe(2)
+        // Seeded twice with the same sections: one row each, not two.
+        ->and($server->sections()->count())->toBe(14);
 });

@@ -12,7 +12,7 @@ from discover_agent import util
 
 CONFIG_FILES = ("wp-config.php", ".env", ".env.local", ".env.production")
 PARENT_LEVELS = 2
-SENSITIVE_MARKERS = ("PASS", "SECRET", "KEY", "TOKEN", "SALT")
+SENSITIVE_MARKERS = util.SENSITIVE_MARKERS
 MYSQL_SCHEMES = ("mysql", "mariadb")
 
 _WP_DEFINE = re.compile(

@@ -1,6 +1,6 @@
 # Installer l'agent Discover
 
-L'agent tourne sur chaque serveur Ubuntu 24.04 (ou 22.04). Il est en Python (bibliothèque standard
+L'agent tourne sur chaque serveur Ubuntu 22.04, 24.04 ou 26.04. Il est en Python (bibliothèque standard
 uniquement), lit la configuration du serveur **sans rien modifier**, et envoie un inventaire au
 central toutes les heures en HTTPS. Il n'ouvre aucun port et n'accepte aucune commande du central.
 
@@ -98,6 +98,54 @@ journalctl -u discover-agent.service
 Les clés de configuration contenant `PASS`, `SECRET`, `KEY`, `TOKEN` ou `SALT` sont ignorées dès
 la lecture ; le mot de passe d'une `DATABASE_URL` est retiré ; seuls des fichiers réguliers de
 moins de 1 Mo sont lus.
+
+## Sections détaillées (agent 0.5)
+
+Depuis la 0.5, l'agent envoie aussi 14 sections d'état (paquets, dépôts apt, noyau, services à
+redémarrer, réseau, PHP, Apache, dépendances des sites, applications Node, Docker, persistance,
+intégrité, motifs de code). Elles sont affichées dans l'onglet « État détaillé » du serveur. **Déployez
+d'abord le central** (voir `install-central.md`), dont la limite de corps doit être de 20 Mo.
+
+**Outils optionnels.** L'agent n'installe rien : `debsums` (section `integrity`), `needrestart`
+(`restart_needed`) et `nftables` (`network.nft`) sont facultatifs. Sans eux, la section vaut
+`not_installed` (`debsums`, `needrestart`) ou son entrée `source_errors.nft` l'indique (`nftables`).
+Cette absence n'apparaît pas dans `discover-agent status` : elle se voit dans l'onglet « État détaillé »
+du central (`error: not_installed` ou `source_errors`). Le paquet les suggère
+(`Suggests`) sans les installer : `sudo apt install debsums needrestart nftables`. Installez une version corrigée
+de `needrestart` (famille CVE-2024-48990) : les versions vulnérables exécutent, en root, du code contrôlé
+par un utilisateur local, et l'agent lance `needrestart` en root.
+
+**Rythme.** Les sections `integrity` et `code_patterns` sont lentes (jusqu'à 5 min) : elles tournent
+une fois par semaine, pas toutes les heures. Réglez l'intervalle dans `/etc/discover-agent/agent.conf` :
+
+```ini
+[collect]
+weekly_interval_days = 7
+```
+
+Elles n'arrivent pas avec l'enrôlement : le premier passage du timer les exécute. Un résultat en échec (délai dépassé, erreur) est retenté après 24 h, tout comme un résultat qui n'a pas pu être envoyé ; un résultat `not_installed` attend en revanche l'intervalle complet. `discover-agent collect` n'exécute
+pas ces sections ; `discover-agent collect --full` les exécute (lent) sans rien envoyer ni modifier
+l'état.
+
+**Lancement manuel.** `sudo discover-agent run` ne passe pas par le service systemd : il n'a pas son bac à
+sable. Les données `livepatch` (`kernel`), `modprobe` (`kernel_surface`) et `integrity` peuvent donc différer
+d'un passage du timer. C'est normal : l'historique peut en garder une ligne, qui ne signale aucun changement sur le
+serveur. Pour reproduire ce que voit le timer, lancez `sudo systemctl start discover-agent`.
+
+**Intégrité et modules du noyau.** Le service masque `/lib/modules` (`ProtectKernelModules=yes`). Dans ce cas
+`modules_checked` vaut `false` et `missing` compte les modules : un module modifié n'apparaît pas dans `changed`.
+
+**Données collectées.** Voir `docs/superpowers/specs/2026-10-14-discover-design.md` §4.7 : en
+particulier les lignes de cron et de sudoers, les `ExecStart` des unités hors paquet, les valeurs de
+pools PHP-FPM, toutes les directives PHP (de `php -i` pour FPM et CLI, de `php.ini` et `conf.d` pour mod_php), les extensions PHP chargées et les versions des bibliothèques liées, les URI des dépôts apt, la liste des paquets, les ports
+en écoute, et pour `authorized_keys` uniquement l'empreinte SHA-256, le type et le commentaire (jamais la clé).
+L'agent ne lit jamais `/etc/shadow` ni les identifiants des runners GitHub.
+
+**Masquage et sa limite.** Toute valeur libre passe par un masquage qui remplace par `***` les
+options `-p…`/`--password=…`, `user:motdepasse@` et `jeton@` dans une URL http(s) ou ftp, `curl -u`, `redis-cli -a`, `docker login -p`, `auth=…`, les valeurs des clés contenant
+`PASS`, `SECRET`, `KEY`, `TOKEN` ou `SALT`, les hachages de mots de passe et les clés SSH collées. Il
+reconnaît des formes connues : un secret écrit autrement peut passer. Vérifiez
+`discover-agent collect` avant d'enrôler un serveur sensible.
 
 ## MySQL : compte en lecture seule (si root n'est pas accessible par socket)
 

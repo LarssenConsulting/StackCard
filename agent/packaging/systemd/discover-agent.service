@@ -19,4 +19,7 @@ ProtectKernelModules=yes
 ProtectControlGroups=yes
 RestrictSUIDSGID=yes
 LockPersonality=yes
-TimeoutStartSec=5min
+# Worst case: 16 min of sections, plus the inventory POST (300 s per socket operation).
+TimeoutStartSec=30min
+Nice=10
+IOSchedulingClass=idle

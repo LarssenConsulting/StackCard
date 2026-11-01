@@ -17,8 +17,8 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        # 3.10: Ubuntu 22.04, 3.12: Ubuntu 24.04.
-        python: ["3.10", "3.12"]
+        # 3.10: Ubuntu 22.04, 3.12: Ubuntu 24.04, 3.14: Ubuntu 26.04.
+        python: ["3.10", "3.12", "3.14"]
     defaults:
       run:
         working-directory: agent

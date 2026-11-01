@@ -5,10 +5,14 @@ identity towards the central API.
 """
 
 import configparser
+import contextlib
 import io
 import json
 import os
+import tempfile
 from dataclasses import dataclass
+
+DEFAULT_WEEKLY_INTERVAL_DAYS = 7
 
 
 @dataclass
@@ -35,6 +39,7 @@ class Config:
     token: str
     ca_file: str | None = None
     pin_sha256: str | None = None
+    weekly_interval_days: int = DEFAULT_WEEKLY_INTERVAL_DAYS
 
 
 def default_paths():
@@ -56,6 +61,7 @@ def save(paths, cfg):
         "ca_file": cfg.ca_file or "",
         "pin_sha256": cfg.pin_sha256 or "",
     }
+    parser["collect"] = {"weekly_interval_days": str(cfg.weekly_interval_days)}
     buffer = io.StringIO()
     parser.write(buffer)
     _write_private(paths.conf, buffer.getvalue())
@@ -71,11 +77,16 @@ def load(paths):
     with open(paths.credentials) as fh:
         token = fh.read().strip()
     section = parser["central"]
+    try:
+        interval = parser.getint("collect", "weekly_interval_days", fallback=DEFAULT_WEEKLY_INTERVAL_DAYS)
+    except ValueError:
+        interval = DEFAULT_WEEKLY_INTERVAL_DAYS
     return Config(
         url=section.get("url"),
         token=token,
         ca_file=section.get("ca_file") or None,
         pin_sha256=section.get("pin_sha256") or None,
+        weekly_interval_days=interval if interval >= 1 else DEFAULT_WEEKLY_INTERVAL_DAYS,
     )
 
 
@@ -89,7 +100,13 @@ def load_state(paths):
 
 def save_state(paths, state):
     os.makedirs(paths.state_dir, mode=0o700, exist_ok=True)
-    tmp = paths.state + ".tmp"
-    with open(tmp, "w") as fh:
-        json.dump(state, fh, indent=2)
-    os.replace(tmp, paths.state)
+    # A unique name (mode 0600): an enrolment and a timer run can overlap.
+    fd, tmp = tempfile.mkstemp(dir=paths.state_dir, prefix="state.json.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            json.dump(state, fh, indent=2)
+        os.replace(tmp, paths.state)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise

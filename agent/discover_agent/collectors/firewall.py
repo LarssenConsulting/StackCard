@@ -3,6 +3,7 @@
 import re
 
 from discover_agent import util
+from discover_agent.redact import redact
 
 # ufw translates its output through Python's gettext, which reads LANGUAGE before LC_ALL.
 COMMAND = ["env", "LANGUAGE=C", "LC_ALL=C", "ufw", "status", "verbose"]
@@ -31,7 +32,7 @@ def _rule(line):
         return None
     to, to_v6 = _strip_v6(match["to"].strip())
     source, from_v6 = _strip_v6(match["from"].strip())
-    comment = (match["comment"] or "").strip()
+    comment = redact((match["comment"] or "").strip())
     return {
         "to": to,
         "action": match["action"],
