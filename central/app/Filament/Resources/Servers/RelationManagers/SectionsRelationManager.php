@@ -45,8 +45,8 @@ class SectionsRelationManager extends RelationManager
                     ->limit(120)
                     ->wrap()
                     ->placeholder('—'),
-                TextColumn::make('collected_at')->label('Collecté')->dateTime('d/m/Y H:i')->placeholder('—'),
-                TextColumn::make('last_seen_at')->label('Dernier envoi')->dateTime('d/m/Y H:i'),
+                TextColumn::make('collected_at')->label('Collecté')->dateTime()->placeholder('—'),
+                TextColumn::make('last_seen_at')->label('Dernier envoi')->dateTime(),
             ])
             ->recordActions([
                 Action::make('view')

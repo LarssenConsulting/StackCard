@@ -23,7 +23,7 @@ class SnapshotsRelationManager extends RelationManager
         return $table
             ->defaultSort('received_at', 'desc')
             ->columns([
-                TextColumn::make('received_at')->label('Reçu')->dateTime('d/m/Y H:i')->sortable(),
+                TextColumn::make('received_at')->label('Reçu')->dateTime()->sortable(),
                 TextColumn::make('source_ip')->label('IP source'),
                 TextColumn::make('payload.agent_version')->label('Agent'),
                 TextColumn::make('error_count')

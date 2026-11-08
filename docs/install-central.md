@@ -90,8 +90,14 @@ Puis :
 3. **conservez les codes de secours** affichés ensuite : ils sont le seul moyen d'entrer si le
    téléphone est perdu.
 
-Les administrateurs suivants se créent de la même façon (`php artisan make:filament-user`) ;
-chacun configure son application d'authentification à sa première connexion.
+Ce premier compte est administrateur. Les comptes suivants, `admin` ou `user`, se créent dans
+**Réglages › Utilisateurs** ; chacun configure son application d'authentification à sa première
+connexion. Un `user` consulte l'inventaire mais n'a accès ni aux réglages, ni aux autres comptes,
+ni aux clients API, ni aux jetons d'enrôlement.
+
+Le fuseau horaire et le format de date se règlent dans **Réglages › Général**. Ils ne changent que
+l'affichage : la base et l'API restent en UTC, donc ne modifiez pas `timezone` dans
+`config/app.php`.
 
 Si un administrateur a perdu à la fois son application et ses codes de secours, retirez-lui son
 second facteur ; il devra le reconfigurer à la connexion suivante :

@@ -35,7 +35,7 @@ discover-agent (Python stdlib, root)  --HTTPS-->  Laravel + Filament + MySQL
 | Stockage côté central | Seule l'empreinte des jetons est stockée (Sanctum pour le jeton agent, SHA-256 pour le jeton d'enrôlement). Révocation et renouvellement depuis l'interface. |
 | Secrets | L'agent ne transmet jamais de mot de passe ni de clé. Les clés de config contenant `PASS`, `SECRET`, `KEY`, `TOKEN` ou `SALT` sont ignorées à la lecture. Le mot de passe est retiré des `DATABASE_URL`. Les empreintes de mot de passe MySQL ne sont jamais lues. |
 | API | Validation stricte du JSON, taille maximale 20 Mo (agent 0.5, sections détaillées ; 5 Mo avant), 30 requêtes/minute par jeton. Journal de chaque réception (serveur, date, IP source). |
-| Interface | Comptes administrateur avec double authentification (MFA Filament), rôle unique en v1. |
+| Interface | Comptes `admin` ou `user` avec double authentification (MFA Filament). |
 | Restriction IP | Optionnelle, au niveau d'Apache (documentation). |
 
 ## 4. Agent
@@ -242,7 +242,7 @@ Le compte de base est retrouvé par `user` sur le serveur cible : correspondance
 - **Serveurs** : liste (nom, IP, OS, dernier envoi, nombre de sites, état). La fiche serveur affiche les infos et IP, avec des onglets : sites, bases, comptes de base, historique des snapshots, et **« État détaillé »** (agent 0.5, lecture seule : pour chaque section connue, la dernière ligne de `server_sections` avec date, état, erreurs et données en JSON échappé ; une section jamais reçue est signalée comme telle ; pas d'historique affiché). Actions : générer un jeton d'enrôlement (affiché une seule fois, avec la commande `enroll` prête à copier), renouveler le jeton agent, révoquer.
 - **Sites** : liste globale avec recherche par domaine et alias, et filtres (serveur, type, version PHP, utilisateur système, HTTPS). La fiche affiche la chaîne domaine → serveur → dossier → utilisateur système → base → compte de base.
 - **Bases de données** : liste globale, sites liés, filtre « orphelines » (aucun `site_db_ref` résolu).
-- **Utilisateurs** : comptes administrateur, avec MFA (application TOTP).
+- **Réglages** (admins seulement) : **Utilisateurs** (comptes `admin` ou `user`, avec MFA par application TOTP ; un admin ne peut ni se supprimer ni changer son propre rôle), **Clients API**, **Général** (fuseau horaire et format de date, pour tout le site et pour l'affichage seulement : base et API restent en UTC). Un `user` consulte et modifie l'inventaire, sans jetons d'enrôlement.
 
 ## 6. Tests
 

@@ -38,7 +38,7 @@ class SiteInfolist
                             ->placeholder('—'),
                         TextEntry::make('ports')->label('Ports')->state(fn (Site $record) => $record->ports()),
                         IconEntry::make('https')->label('HTTPS')->boolean(),
-                        TextEntry::make('cert_expires_at')->label('Expiration du certificat')->date('d/m/Y')->placeholder('—'),
+                        TextEntry::make('cert_expires_at')->label('Expiration du certificat')->date()->placeholder('—'),
                         TextEntry::make('type')->label('Type')->badge()
                             ->formatStateUsing(fn (string $state) => Site::TYPES[$state] ?? $state),
                         TextEntry::make('technologies')

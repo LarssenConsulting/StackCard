@@ -23,6 +23,8 @@ main() {
         echo "composer.lock inchangé : dépendances à jour."
     fi
 
+    # Sans cela, migrate utiliserait la config en cache du déploiement précédent, pas le .env actuel.
+    php artisan config:clear
     php artisan migrate --force
     php artisan optimize   # inclut filament:optimize
     # Relit la dernière version publiée de l'agent au lieu d'attendre l'expiration du cache (6 h).

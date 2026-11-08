@@ -38,7 +38,7 @@ class ExpiringCertificates extends TableWidget
                 TextColumn::make('server.name')->label('Serveur'),
                 TextColumn::make('cert_expires_at')
                     ->label('Expire')
-                    ->date('d/m/Y')
+                    ->date()
                     ->description(fn (Site $record) => $record->cert_expires_at->diffForHumans())
                     ->color('danger'),
             ]);

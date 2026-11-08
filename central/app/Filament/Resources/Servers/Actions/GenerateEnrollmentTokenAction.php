@@ -27,6 +27,8 @@ class GenerateEnrollmentTokenAction
                 ? 'Régénérer le jeton d’enrôlement'
                 : 'Générer un jeton d’enrôlement')
             ->icon('heroicon-o-key')
+            // A token adds a server to the fleet: admins only.
+            ->visible(fn () => auth()->user()?->isAdmin() === true)
             ->requiresConfirmation(fn (array $arguments) => ! $issued($arguments))
             ->modalHeading(fn (array $arguments, Server $record) => $issued($arguments)
                 ? 'Jeton d’enrôlement créé'

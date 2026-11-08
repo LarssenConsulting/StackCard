@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Support\DisplaySettings;
 use App\Support\TrustedProxyList;
+use Filament\Schemas\Schema;
+use Filament\Support\Facades\FilamentTimezone;
+use Filament\Tables\Table;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
@@ -29,6 +33,15 @@ class AppServiceProvider extends ServiceProvider
             TrustProxies::at($proxies);
             TrustProxies::withHeaders(Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO);
         }
+
+        // The panel shows dates as the settings say; lazy, so nothing is read while artisan boots.
+        FilamentTimezone::set(fn () => DisplaySettings::timezone());
+        Table::configureUsing(fn (Table $table) => $table
+            ->defaultDateDisplayFormat(fn () => DisplaySettings::dateFormat())
+            ->defaultDateTimeDisplayFormat(fn () => DisplaySettings::dateTimeFormat()));
+        Schema::configureUsing(fn (Schema $schema) => $schema
+            ->defaultDateDisplayFormat(fn () => DisplaySettings::dateFormat())
+            ->defaultDateTimeDisplayFormat(fn () => DisplaySettings::dateTimeFormat()));
 
         // Enrollment tokens are guessable only by brute force: keep it slow.
         RateLimiter::for('enroll', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));

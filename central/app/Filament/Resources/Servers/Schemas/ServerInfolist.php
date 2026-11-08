@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Servers\Schemas;
 
 use App\Models\Server;
 use App\Support\AgentRelease;
+use App\Support\DisplaySettings;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -62,7 +63,7 @@ class ServerInfolist
                         TextEntry::make('enrollment')
                             ->label('Jeton d’enrôlement')
                             ->state(fn (Server $record) => ($token = $record->pendingEnrollmentToken())
-                                ? 'En attente, expire le '.$token->expires_at->timezone(config('app.timezone'))->format('d/m/Y à H:i')
+                                ? 'En attente, expire le '.DisplaySettings::formatDateTime($token->expires_at, ' à ')
                                 : null)
                             ->placeholder(fn (Server $record) => $record->status === Server::STATUS_ACTIVE
                                 ? 'Utilisé, agent enrôlé'

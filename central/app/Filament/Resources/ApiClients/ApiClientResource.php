@@ -20,6 +20,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
 use Livewire\Component;
+use UnitEnum;
 
 /** External applications allowed to read the inventory, each from a short list of addresses. */
 class ApiClientResource extends Resource
@@ -33,6 +34,8 @@ class ApiClientResource extends Resource
     protected static ?string $pluralModelLabel = 'clients API';
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Réglages';
 
     protected static ?int $navigationSort = 90;
 
@@ -66,12 +69,12 @@ class ApiClientResource extends Resource
                 TextColumn::make('token_expires')
                     ->label('Jeton valable jusqu’au')
                     ->state(fn (ApiClient $record) => $record->currentToken()?->expires_at)
-                    ->dateTime('d/m/Y')
+                    ->date()
                     ->placeholder('Aucun jeton'),
                 TextColumn::make('token_used')
                     ->label('Dernier appel')
                     ->state(fn (ApiClient $record) => $record->currentToken()?->last_used_at)
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime()
                     ->placeholder('Jamais'),
             ])
             ->recordActions([
@@ -98,6 +101,7 @@ class ApiClientResource extends Resource
         return Action::make('issueToken')
             ->label(fn (ApiClient $record) => $record->currentToken() ? 'Régénérer le jeton' : 'Générer le jeton')
             ->icon('heroicon-o-key')
+            ->visible(fn () => auth()->user()?->isAdmin() === true)
             ->requiresConfirmation(fn (array $arguments) => ! $issued($arguments))
             ->modalHeading(fn (array $arguments, ApiClient $record) => $issued($arguments) ? 'Jeton créé' : "Jeton de {$record->name}")
             ->modalDescription(fn (array $arguments) => $issued($arguments)

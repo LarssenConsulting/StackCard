@@ -48,7 +48,7 @@ class SitesTable
                 TextColumn::make('dbRefs.db_name')->label('Bases')->listWithLineBreaks()->placeholder('—'),
                 TextColumn::make('cert_expires_at')
                     ->label('Certificat')
-                    ->date('d/m/Y')
+                    ->date()
                     ->sortable()
                     ->color(fn ($state) => $state && $state->lt(now()->addDays(30)) ? 'danger' : null)
                     ->placeholder('—'),
