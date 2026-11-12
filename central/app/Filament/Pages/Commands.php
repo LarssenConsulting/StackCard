@@ -41,6 +41,7 @@ class Commands extends Page
                     ['Installer, ou mettre à jour un agent déjà installé (répondre « non » à « Mettre à jour le jeton ? » pour garder la configuration)', "curl -fsSL {$script} | sudo sh"],
                     ['Installer et enrôler sans questions (Ansible, plusieurs serveurs)', "curl -fsSL {$script} | sudo DISCOVER_URL={$host} DISCOVER_TOKEN=<jeton> sh"],
                     ['Enrôler ou réenrôler un agent déjà installé', "sudo discover-agent enroll --url {$url} --token <jeton>"],
+                    ['Réinstaller un serveur : régénérer un jeton sur sa fiche (le slug est conservé), ne pas créer un nouveau serveur', "sudo discover-agent enroll --url {$url} --token <jeton>"],
                     ['Installer les outils optionnels (intégrité, services à redémarrer, nftables)', 'sudo apt install debsums needrestart nftables'],
                 ],
             ],

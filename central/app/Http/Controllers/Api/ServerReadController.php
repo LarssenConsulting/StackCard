@@ -35,8 +35,9 @@ class ServerReadController extends Controller
         return response()->json(['data' => Server::query()->orderBy('id')->get()->map(self::summary(...))->all()]);
     }
 
-    public function show(Server $server): JsonResponse
+    public function show(string $server): JsonResponse
     {
+        $server = Server::findByKey($server);
         $sections = $this->latestSections($server, ['section', ...self::SECTION_STATE_FIELDS]);
 
         return response()->json(['data' => [
@@ -72,8 +73,9 @@ class ServerReadController extends Controller
         ]]);
     }
 
-    public function section(Server $server, string $section): JsonResponse
+    public function section(string $server, string $section): JsonResponse
     {
+        $server = Server::findByKey($server);
         $row = $server->sections()->where('section', $section)->orderByDesc('id')->firstOrFail();
 
         return response()->json(['data' => [
@@ -88,9 +90,11 @@ class ServerReadController extends Controller
     {
         return [
             ...$server->only([
-                'id', 'name', 'hostname', 'fqdn', 'status', 'primary_ip', 'os', 'kernel', 'virtualization',
+                'id', 'name', 'slug', 'hostname', 'fqdn', 'status', 'primary_ip', 'os', 'kernel', 'virtualization',
                 'apache_version', 'mysql_version', 'docker_version', 'agent_version', 'last_seen_at',
             ]),
+            'slug_locked' => $server->isSlugLocked(),
+            ...$server->only(['connect_address', 'connect_port']),
             'stale' => $server->last_seen_at === null || $server->last_seen_at->lt(now()->subHours(Server::STALE_AFTER_HOURS)),
         ];
     }

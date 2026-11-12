@@ -21,22 +21,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 
-/** Enrolled in the authenticator app: real page requests are otherwise sent to its set-up. */
-function accountWithRole(string $role): User
-{
-    return User::factory()->create(['role' => $role, 'app_authentication_secret' => 'test-secret']);
-}
-
-function adminUser(): User
-{
-    return accountWithRole(User::ROLE_ADMIN);
-}
-
-function plainUser(): User
-{
-    return accountWithRole(User::ROLE_USER);
-}
-
 describe('roles', function () {
     it('makes the very first account an admin and the next ones plain users', function () {
         expect(User::factory()->create()->isAdmin())->toBeTrue()

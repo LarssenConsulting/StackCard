@@ -5,3 +5,6 @@ _ssl/
 
 # Éléments fournis ponctuellement (specs, captures…) — jamais commités
 _inputs/
+
+__pycache__/
+*.pyc

@@ -8,25 +8,6 @@ use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-const ALLOWED_IP = '203.0.113.10';
-
-/** A client allowed from ALLOWED_IP and the plain token its website would hold. */
-function readClient(array $ips = [ALLOWED_IP], string $name = 'site-cve'): array
-{
-    $client = ApiClient::create(['name' => $name, 'allowed_ips' => $ips]);
-
-    return [$client, $client->issueToken()];
-}
-
-function readApi($test, string $token, string $path, string $ip = ALLOWED_IP)
-{
-    app('auth')->forgetGuards();
-
-    return $test->withServerVariables(['REMOTE_ADDR' => $ip])
-        ->withToken($token)
-        ->getJson("/api/v1/{$path}");
-}
-
 function storedSection(Server $server, string $name, array $attributes = []): ServerSection
 {
     return $server->sections()->create(array_merge([
@@ -207,6 +188,13 @@ it('refuses a request without a token, or with a wrong one', function () {
     readApi($this, 'nope', 'servers')->assertUnauthorized();
 });
 
+it('answers 401 in JSON to a request without a token, even without Accept', function () {
+    app('auth')->forgetGuards();
+    $this->withServerVariables(['REMOTE_ADDR' => ALLOWED_IP])->get('/api/v1/servers')
+        ->assertStatus(401)
+        ->assertJsonPath('message', 'Unauthenticated.');
+});
+
 it('refuses the token of an agent: a compromised server cannot read the fleet', function () {
     readApi($this, $this->agentToken, 'servers')->assertForbidden();
     readApi($this, $this->agentToken, "servers/{$this->server->id}")->assertForbidden();
@@ -255,4 +243,29 @@ it('limits the request rate per address', function () {
 
     readApi($this, $this->token, 'servers')->assertTooManyRequests();
     readApi($this, $this->token, 'servers', '198.51.100.7')->assertForbidden();
+});
+
+it('exposes the slug and the connection address', function () {
+    readApi($this, $this->token, 'servers')
+        ->assertOk()
+        ->assertJsonPath('data.0.slug', 'web01')
+        ->assertJsonPath('data.0.slug_locked', false)
+        ->assertJsonPath('data.0.connect_address', null)
+        ->assertJsonPath('data.0.connect_port', null);
+});
+
+it('resolves a server by id or by slug', function () {
+    $byId = readApi($this, $this->token, "servers/{$this->server->id}")->assertOk()->json('data.id');
+    $bySlug = readApi($this, $this->token, 'servers/web01')->assertOk()->json('data.id');
+
+    expect($bySlug)->toBe($byId);
+    readApi($this, $this->token, 'servers/web01/sections/kernel')->assertNotFound();
+
+    storedSection($this->server, 'kernel');
+    readApi($this, $this->token, 'servers/web01/sections/kernel')->assertOk();
+});
+
+it('answers 404 for an unknown or upper-case slug', function () {
+    readApi($this, $this->token, 'servers/inconnu')->assertNotFound()->assertJsonStructure(['message']);
+    readApi($this, $this->token, 'servers/WEB01')->assertNotFound();
 });

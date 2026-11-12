@@ -19,6 +19,15 @@ class ServerInfolist
                 Section::make('Identité')
                     ->schema([
                         TextEntry::make('name')->label('Nom'),
+                        TextEntry::make('slug')->label('Slug')->copyable()->placeholder('—'),
+                        TextEntry::make('slug_state')
+                            ->label('État du slug')
+                            ->badge()
+                            ->color('warning')
+                            ->state('non figé')
+                            ->visible(fn (Server $record) => ! $record->isSlugLocked()),
+                        TextEntry::make('connect_address')->label('Adresse de connexion')->placeholder('—')->copyable(),
+                        TextEntry::make('connect_port')->label('Port SSH')->placeholder('—'),
                         TextEntry::make('hostname')->label('Hostname')->placeholder('—'),
                         TextEntry::make('fqdn')->label('FQDN')->placeholder('—')->copyable(),
                         TextEntry::make('primary_ip')->label('IP principale')->placeholder('—')->copyable(),

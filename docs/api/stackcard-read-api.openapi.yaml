@@ -53,6 +53,10 @@ tags:
     description: Identité et état courant des serveurs
   - name: Sections
     description: État détaillé d'un serveur, section par section
+  - name: Domaines
+    description: Noms de domaine servis par la flotte
+  - name: Ansible
+    description: Inventaire dynamique pour Ansible / Semaphore UI
 paths:
   /api/v1/servers:
     get:
@@ -195,6 +199,106 @@ paths:
                 $ref: '#/components/schemas/Error'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /api/v1/domains:
+    get:
+      tags: [Domaines]
+      operationId: listDomains
+      summary: Lister les noms de domaine de la flotte
+      description: |
+        Une entrée par nom de domaine (en minuscules, triés), avec chaque vhost Apache qui le sert. Les
+        emplacements sont triés par slug du serveur puis par port. Les serveurs révoqués sont exclus.
+        Un `server_stale` à `true` signale un serveur muet depuis plus de 3 h : l'emplacement peut avoir changé.
+      parameters:
+        - name: server
+          in: query
+          required: false
+          description: Slug d'un serveur, pour ne garder que ses domaines. Un slug inconnu renvoie une liste vide.
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+            example: web01
+      responses:
+        '200':
+          description: Les domaines
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Domain'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/inventory/ansible:
+    get:
+      tags: [Ansible]
+      operationId: getAnsibleInventory
+      summary: Inventaire dynamique Ansible
+      description: |
+        Format `--list` d'un inventaire dynamique Ansible. Les hôtes sont nommés par leur slug StackCard ;
+        seuls les serveurs actifs ayant une adresse (manuelle, sinon celle remontée par l'agent) sont listés.
+        `ansible_port` n'est présent que si un port de connexion est défini. Groupes dérivés, émis seulement
+        s'ils ne sont pas vides : `ubuntu_XX_YY`, `apache`, `mysql`, `docker`, `stale` (serveur muet depuis plus de 3 h).
+        Le groupe `all` liste tous les hôtes et les groupes dérivés. Le script `docs/ansible/stackcard_inventory.py` s'en sert.
+      responses:
+        '200':
+          description: L'inventaire
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [_meta, all]
+                properties:
+                  _meta:
+                    type: object
+                    required: [hostvars]
+                    properties:
+                      hostvars:
+                        type: object
+                        description: Variables par slug de serveur.
+                        additionalProperties:
+                          type: object
+                          required: [ansible_host, stackcard_id, stackcard_name, stackcard_stale]
+                          properties:
+                            ansible_host: {type: string, example: 203.0.113.5}
+                            ansible_port: {type: integer, example: 2222}
+                            stackcard_id: {type: integer, example: 1}
+                            stackcard_name: {type: string, example: web01}
+                            stackcard_hostname: {type: string, nullable: true}
+                            stackcard_fqdn: {type: string, nullable: true}
+                            stackcard_os: {type: string, nullable: true, example: Ubuntu 24.04.1 LTS}
+                            stackcard_stale: {type: boolean}
+                            stackcard_last_seen_at: {type: string, format: date-time, nullable: true, description: ISO 8601, UTC}
+                  all:
+                    type: object
+                    required: [hosts, children]
+                    properties:
+                      hosts:
+                        type: array
+                        items: {type: string}
+                      children:
+                        type: array
+                        items: {type: string}
+                additionalProperties:
+                  type: object
+                  description: Un groupe dérivé (`apache`, `docker`, `mysql`, `stale`, `ubuntu_XX_YY`).
+                  properties:
+                    hosts:
+                      type: array
+                      items: {type: string}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 components:
   securitySchemes:
     bearerAuth:
@@ -206,10 +310,11 @@ components:
       name: server
       in: path
       required: true
-      description: '`id` du serveur, tel que renvoyé par la liste'
+      description: Identifiant numérique ou slug du serveur, tels que renvoyés par la liste (`id` ou `slug`)
       schema:
-        type: integer
-        minimum: 1
+        type: string
+        pattern: '^[a-z0-9-]+$'
+        example: web01
   responses:
     Unauthorized:
       description: Jeton absent, invalide, expiré ou révoqué.
@@ -264,15 +369,93 @@ components:
         - persistence
         - integrity
         - code_patterns
+    Domain:
+      type: object
+      required: [domain, locations]
+      properties:
+        domain:
+          type: string
+          description: Nom de domaine en minuscules
+          example: shop.example.com
+        locations:
+          type: array
+          items:
+            type: object
+            required: [source, server, server_stale, role, port, https]
+            properties:
+              source:
+                type: string
+                enum: [apache]
+              server:
+                type: object
+                required: [slug, name]
+                properties:
+                  slug:
+                    type: string
+                    nullable: true
+                  name:
+                    type: string
+              server_stale:
+                type: boolean
+                description: Vrai si le serveur est muet depuis plus de 3 h.
+              role:
+                type: string
+                enum: [server_name, alias]
+                description: "`server_name` pour le ServerName du vhost, `alias` pour un ServerAlias."
+              port:
+                type: integer
+              https:
+                type: boolean
+              cert_expires_at:
+                type: string
+                format: date-time
+                nullable: true
+              type:
+                type: string
+                enum: [php-fpm, php-mod, node, docker, proxy, static]
+              document_root:
+                type: string
+                nullable: true
+              app_dir:
+                type: string
+                nullable: true
+              upstream:
+                type: string
+                nullable: true
+              php_version:
+                type: string
+                nullable: true
+              technologies:
+                type: array
+                nullable: true
+                description: CMS et frameworks détectés
+                items:
+                  type: object
     ServerSummary:
       type: object
-      required: [id, name, status, stale]
+      required: [id, name, slug, slug_locked, status, stale]
       properties:
         id:
           type: integer
         name:
           type: string
           description: Nom d'affichage
+        slug:
+          type: string
+          nullable: true
+          description: Identifiant stable du serveur, utilisable à la place de `id` dans les chemins. Minuscules, chiffres et tirets.
+          example: web01
+        slug_locked:
+          type: boolean
+          description: Vrai si le slug est verrouillé et ne change plus.
+        connect_address:
+          type: string
+          nullable: true
+          description: Adresse (IP ou nom) à utiliser pour se connecter au serveur.
+        connect_port:
+          type: integer
+          nullable: true
+          description: Port de connexion.
         hostname:
           type: string
           nullable: true

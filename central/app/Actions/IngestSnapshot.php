@@ -7,6 +7,7 @@ use App\Models\NodeApp;
 use App\Models\Server;
 use App\Models\ServerSection;
 use App\Models\Snapshot;
+use App\Models\SiteDomain;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +46,8 @@ class IngestSnapshot
         ]);
 
         $info = $snapshot['server'];
+        // The slug becomes permanent at the very first inventory, never afterwards.
+        $firstInventory = $server->last_seen_at === null;
         $server->update([
             'hostname' => $info['hostname'],
             'fqdn' => $info['fqdn'] ?? null,
@@ -64,6 +67,9 @@ class IngestSnapshot
             'last_seen_at' => now(),
             'last_source_ip' => $sourceIp,
         ]);
+        if ($firstInventory && $server->slug_locked_at === null) {
+            $server->forceFill(['slug_locked_at' => now()])->save();
+        }
 
         $this->clearState($server);
         $this->storeIps($server, $info['interfaces']);
@@ -231,6 +237,9 @@ class IngestSnapshot
                 'node_app_id' => $port && $data['type'] === 'node' ? ($nodeApps[$port] ?? null) : null,
                 'docker_container_id' => $port && $data['type'] === 'docker' ? ($containers[$port] ?? null) : null,
             ]));
+            foreach (SiteDomain::namesFor($data['server_name'] ?? null, $data['aliases'] ?? []) as $domain => $role) {
+                $site->domains()->create(['server_id' => $server->id, 'domain' => $domain, 'role' => $role]);
+            }
             foreach ($data['db_refs'] as $ref) {
                 $site->dbRefs()->create(Arr::only($ref, ['db_name', 'db_user', 'db_host', 'source']));
             }

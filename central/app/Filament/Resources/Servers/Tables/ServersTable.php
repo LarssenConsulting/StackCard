@@ -25,7 +25,19 @@ class ServersTable
                     ->description(fn (Server $record) => $record->fqdn ?? $record->hostname)
                     ->searchable(['name', 'hostname', 'fqdn'])
                     ->sortable(),
-                TextColumn::make('primary_ip')->label('IP')->searchable()->copyable()->placeholder('—'),
+                TextColumn::make('slug')
+                    ->label('Slug')
+                    ->searchable()
+                    ->copyable()
+                    ->description(fn (Server $record) => $record->isSlugLocked() ? null : 'non figé')
+                    ->placeholder('—'),
+                TextColumn::make('primary_ip')
+                    ->label('Adresse')
+                    ->state(fn (Server $record) => $record->effectiveAddress())
+                    ->description(fn (Server $record) => filled($record->connect_address) ? 'manuelle' : null)
+                    ->searchable(['primary_ip', 'connect_address'])
+                    ->copyable()
+                    ->placeholder('—'),
                 TextColumn::make('os')->label('Système')->toggleable()->placeholder('—'),
                 TextColumn::make('sites_count')->label('Sites')->counts('sites')->sortable(),
                 TextColumn::make('databases_count')->label('Bases')->counts('databases')->sortable(),

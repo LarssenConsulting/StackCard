@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ServerSlug;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -25,12 +26,46 @@ class Server extends Model
         'name', 'hostname', 'fqdn', 'machine_id', 'primary_ip', 'os', 'kernel', 'virtualization',
         'apache_version', 'mysql_version', 'docker_version', 'agent_version', 'status', 'last_seen_at',
         'last_source_ip', 'notes', 'ufw_status', 'ufw_logging', 'ufw_default_incoming',
-        'ufw_default_outgoing', 'ufw_default_routed',
+        'ufw_default_outgoing', 'ufw_default_routed', 'slug', 'connect_address', 'connect_port',
     ];
 
     protected function casts(): array
     {
-        return ['last_seen_at' => 'datetime'];
+        return ['last_seen_at' => 'datetime', 'slug_locked_at' => 'datetime'];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (Server $server) {
+            if ($server->isDirty('slug') && $server->getOriginal('slug_locked_at') !== null) {
+                throw new \LogicException('Le slug d’un serveur figé ne peut plus changer.');
+            }
+        });
+
+        static::creating(function (Server $server) {
+            if (blank($server->slug)) {
+                $server->slug = ServerSlug::unique((string) $server->name);
+            }
+        });
+    }
+
+    public function isSlugLocked(): bool
+    {
+        return $this->slug_locked_at !== null;
+    }
+
+    /** Where to reach the server: the manual address, else the one the agent reported. */
+    public function effectiveAddress(): ?string
+    {
+        return $this->connect_address ?: $this->primary_ip;
+    }
+
+    /** Numeric key = id, anything else = slug. */
+    public static function findByKey(string $key): self
+    {
+        return ctype_digit($key)
+            ? static::query()->whereKey((int) $key)->firstOrFail()
+            : static::query()->where('slug', $key)->firstOrFail();
     }
 
     public function ips(): HasMany

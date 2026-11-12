@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "StackCard, API de lecture",
-    "description": "Lecture seule. Renseignez les variables de la collection `baseUrl` et `token`, et appelez depuis une adresse IP autorisée pour ce jeton. Le premier appel de la liste remplit `serverId`. Spécification complète : stackcard-read-api.openapi.yaml.",
+    "description": "Lecture seule. Renseignez les variables de la collection `baseUrl` et `token`, et appelez depuis une adresse IP autorisée pour ce jeton. Le premier appel de la liste remplit `serverId` (id ou slug du premier serveur). Spécification complète : stackcard-read-api.openapi.yaml.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -27,7 +27,7 @@
     },
     {
       "key": "serverId",
-      "value": "1",
+      "value": "web01",
       "type": "string"
     }
   ],
@@ -46,7 +46,7 @@
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
                   "const servers = pm.response.json().data;",
                   "pm.test('Liste non vide', () => pm.expect(servers).to.be.an('array').that.is.not.empty);",
-                  "if (servers.length) { pm.collectionVariables.set('serverId', String(servers[0].id)); }",
+                  "if (servers.length) { pm.collectionVariables.set('serverId', servers[0].slug ?? String(servers[0].id)); }",
                   "pm.test('Pas de notes ni de machine_id', () => { pm.expect(pm.response.text()).to.not.include('machine_id'); pm.expect(pm.response.text()).to.not.include('\"notes\"'); });"
                 ]
               }
@@ -71,7 +71,7 @@
                 "servers"
               ]
             },
-            "description": "Remplit la variable `serverId` avec le premier serveur."
+            "description": "Remplit la variable `serverId` (id ou slug) avec le premier serveur."
           },
           "response": []
         },
@@ -691,6 +691,104 @@
                 "code_patterns"
               ]
             }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Domaines",
+      "item": [
+        {
+          "name": "Lister les domaines",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const domains = pm.response.json().data;",
+                  "pm.test('Liste de domaines', () => pm.expect(domains).to.be.an('array'));",
+                  "pm.test('Chaque domaine a ses emplacements', () => domains.forEach(d => pm.expect(d).to.have.keys('domain', 'locations')));",
+                  "pm.test('Pas de notes ni de machine_id', () => { pm.expect(pm.response.text()).to.not.include('machine_id'); pm.expect(pm.response.text()).to.not.include('\"notes\"'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/domains",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "domains"
+              ],
+              "query": [
+                {
+                  "key": "server",
+                  "value": "",
+                  "description": "Slug d'un serveur pour ne garder que ses domaines",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Un domaine par entrée, avec chaque vhost qui le sert. Ajoutez `?server=<slug>` pour filtrer."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Ansible",
+      "item": [
+        {
+          "name": "Inventaire dynamique",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const inv = pm.response.json();",
+                  "pm.test('Format Ansible', () => { pm.expect(inv).to.have.property('_meta'); pm.expect(inv._meta).to.have.property('hostvars'); pm.expect(inv.all).to.have.keys('hosts', 'children'); });",
+                  "pm.test('Pas de notes ni de machine_id', () => { pm.expect(pm.response.text()).to.not.include('machine_id'); pm.expect(pm.response.text()).to.not.include('\"notes\"'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/ansible",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "ansible"
+              ]
+            },
+            "description": "Inventaire dynamique Ansible (format --list). Hôtes nommés par slug StackCard."
           },
           "response": []
         }

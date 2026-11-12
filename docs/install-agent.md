@@ -61,6 +61,11 @@ curl -fsSL https://github.com/LarssenConsulting/StackCard/releases/latest/downlo
 
 Sans terminal ni `DISCOVER_TOKEN`, un serveur déjà enrôlé est seulement mis à jour.
 
+**Réinstaller un serveur** (machine refaite, agent réinstallé) : régénérer un jeton sur sa fiche
+dans le central (le slug est conservé), puis `sudo discover-agent enroll --url https://<central> --token <jeton>`.
+Ne pas créer un nouveau serveur : le slug, identifiant de référence des outils externes
+(Ansible, suivi des CVE), serait perdu.
+
 ## 3. Enrôlement manuel (CA interne, épinglage)
 
 Le paquet seul (`python3 agent/packaging/build_deb.py` → `agent/dist/discover-agent_<version>_all.deb`,

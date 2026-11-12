@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\AnsibleInventoryController;
+use App\Http\Controllers\Api\DomainReadController;
 use App\Http\Controllers\Api\EnrollController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\ServerReadController;
@@ -28,9 +30,11 @@ Route::prefix('v1')->group(function () {
         EnsureApiClientIsAllowed::class,
     ])->controller(ServerReadController::class)->group(function () {
         Route::get('servers', 'index');
-        Route::get('servers/{server}', 'show')->whereNumber('server');
+        Route::get('servers/{server}', 'show')->where('server', '[a-z0-9-]+');
         Route::get('servers/{server}/sections/{section}', 'section')
-            ->whereNumber('server')
+            ->where('server', '[a-z0-9-]+')
             ->whereIn('section', ServerSection::NAMES);
+        Route::get('domains', [DomainReadController::class, 'index']);
+        Route::get('inventory/ansible', AnsibleInventoryController::class);
     });
 });

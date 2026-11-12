@@ -96,4 +96,9 @@ class Site extends Model
     {
         return $this->hasMany(SiteDbRef::class);
     }
+
+    public function domains(): HasMany
+    {
+        return $this->hasMany(SiteDomain::class);
+    }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -60,4 +61,39 @@ function enrolledServer(string $name = 'web01', string $machineId = 'abc123'): a
     ]);
 
     return [$server, $server->createToken('agent', [\App\Models\Server::AGENT_ABILITY])->plainTextToken];
+}
+
+/** Enrolled in the authenticator app: real page requests are otherwise sent to its set-up. */
+function accountWithRole(string $role): User
+{
+    return User::factory()->create(['role' => $role, 'app_authentication_secret' => 'test-secret']);
+}
+
+function adminUser(): User
+{
+    return accountWithRole(User::ROLE_ADMIN);
+}
+
+function plainUser(): User
+{
+    return accountWithRole(User::ROLE_USER);
+}
+
+const ALLOWED_IP = '203.0.113.10';
+
+/** A client allowed from ALLOWED_IP and the plain token its website would hold. */
+function readClient(array $ips = [ALLOWED_IP], string $name = 'site-cve'): array
+{
+    $client = \App\Models\ApiClient::create(['name' => $name, 'allowed_ips' => $ips]);
+
+    return [$client, $client->issueToken()];
+}
+
+function readApi($test, string $token, string $path, string $ip = ALLOWED_IP)
+{
+    app('auth')->forgetGuards();
+
+    return $test->withServerVariables(['REMOTE_ADDR' => $ip])
+        ->withToken($token)
+        ->getJson("/api/v1/{$path}");
 }

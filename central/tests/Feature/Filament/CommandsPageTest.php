@@ -40,3 +40,12 @@ it('shows the central maintenance commands to admins only', function () {
         ->assertSee('./deploy.sh')
         ->assertSee('php artisan make:filament-user');
 });
+
+it('explains how to reinstall a server without creating a new one', function () {
+    $this->actingAs(commandsAccount(User::ROLE_USER), 'web');
+
+    $this->get(Commands::getUrl())
+        ->assertOk()
+        ->assertSee('Réinstaller un serveur')
+        ->assertSee('régénérer un jeton sur sa fiche');
+});
