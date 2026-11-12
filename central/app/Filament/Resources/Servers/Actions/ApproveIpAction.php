@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Servers\Actions;
 
 use App\Models\Server;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
 use Filament\Notifications\Notification;
 
 /**
@@ -24,13 +25,27 @@ class ApproveIpAction
             ->modalDescription(fn (Server $record) => "L’agent signale l’IP {$record->primary_ip} au lieu de {$record->approved_ip}. "
                 .'Ansible se connectera à la nouvelle adresse : vérifiez d’abord que ce changement est attendu.')
             ->modalSubmitActionLabel('Valider')
-            ->action(function (Server $record) {
-                if (auth()->user()?->isAdmin() !== true || ! $record->ipChangePending()) {
+            // The approval is bound to the IP shown in the modal: the agent may report another one meanwhile.
+            ->schema([Hidden::make('ip')])
+            ->fillForm(fn (Server $record) => ['ip' => $record->primary_ip])
+            ->action(function (Server $record, array $data) {
+                $ip = $data['ip'] ?? null;
+                if (auth()->user()?->isAdmin() !== true || ! is_string($ip) || filter_var($ip, FILTER_VALIDATE_IP) === false) {
                     return;
                 }
-                $record->forceFill(['approved_ip' => $record->primary_ip])->save();
+                $approved = Server::query()->whereKey($record->getKey())->where('primary_ip', $ip)
+                    ->update(['approved_ip' => $ip]);
 
-                Notification::make()->success()->title("IP {$record->primary_ip} validée")->send();
+                if ($approved === 0) {
+                    Notification::make()->danger()
+                        ->title('L’IP a changé entre-temps')
+                        ->body('L’agent a signalé une autre adresse depuis l’ouverture de cette fenêtre : rien n’a été validé, relisez la fiche.')
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()->success()->title("IP {$ip} validée")->send();
             });
     }
 }

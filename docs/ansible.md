@@ -68,7 +68,8 @@ certification interne, ajouter `STACKCARD_CA_FILE` (chemin d'un fichier PEM lisi
 
 ```bash
 export STACKCARD_URL=https://stackcard.example.com
-export STACKCARD_TOKEN=<jeton>
+export STACKCARD_TOKEN='<jeton>'   # apostrophes obligatoires : le jeton contient un « | »
+# ou, sans le laisser dans l'historique : read -rs STACKCARD_TOKEN && export STACKCARD_TOKEN
 
 ./stackcard_inventory.py --list                       # le JSON de l'API
 ansible -i stackcard_inventory.py ubuntu_22_04 -m ping

@@ -19,7 +19,6 @@
 - `docs/api/stackcard-read-api.openapi.yaml` et `.postman_collection.json` suivent chaque route et champ ; `ReadApiDocsTest` compare les routes documentées à celles de `ServerReadController` : étendre son filtre à `DomainReadController` et `AnsibleInventoryController`.
 - Format du slug : `^(?!\d+$)[a-z0-9]+(?:-[a-z0-9]+)*$`, 64 caractères max.
 - Champs et actions sensibles réservés aux admins via `auth()->user()?->isAdmin()`.
-- Commits : auteur `Thibault de la Croix`, aucune mention d'IA. Ne pas pousser.
 
 ## Review Focus
 

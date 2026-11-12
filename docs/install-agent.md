@@ -38,7 +38,7 @@ curl -fsSL https://github.com/LarssenConsulting/StackCard/releases/latest/downlo
 Le script télécharge le paquet, vérifie son empreinte SHA-256, l'installe (dépendances
 `python3 (>= 3.10)`, `iproute2`, `openssl` comprises), puis demande :
 
-- **l'adresse (FQDN) du central**, par exemple `sentinel.larssen-homelab.fr`. Il vérifie que
+- **l'adresse (FQDN) du central**, par exemple `sentinel.example.fr`. Il vérifie que
   `https://<fqdn>/up` répond avec un certificat valide avant d'aller plus loin : un certificat
   reconnu par le serveur est obligatoire (aucune option pour s'en passer) ;
 - **le jeton**, saisi sans écho. Il est transmis à l'agent par l'entrée standard, jamais en
@@ -56,7 +56,7 @@ proposée par défaut) et nouveau jeton ; non → configuration inchangée.
 
 ```bash
 curl -fsSL https://github.com/LarssenConsulting/StackCard/releases/latest/download/install.sh \
-  | sudo DISCOVER_URL=sentinel.larssen-homelab.fr DISCOVER_TOKEN=<jeton> sh
+  | sudo DISCOVER_URL=sentinel.example.fr DISCOVER_TOKEN=<jeton> sh
 ```
 
 Sans terminal ni `DISCOVER_TOKEN`, un serveur déjà enrôlé est seulement mis à jour.
@@ -73,7 +73,7 @@ puis `sudo apt install ./discover-agent_<version>_all.deb`) s'enrôle avec la co
 installé » de la fenêtre du jeton, qui accepte aussi :
 
 ```bash
-sudo discover-agent enroll --url https://sentinel.larssen-homelab.fr --token <jeton>
+sudo discover-agent enroll --url https://sentinel.example.fr --token <jeton>
 # Autorité de certification interne :   --ca-file /usr/local/share/ca-certificates/ca-interne.crt
 # Épinglage de la clé du central :     --pin-sha256 <empreinte>   (voir install-central.md §7)
 # Jeton lu sur l'entrée standard :     --token -

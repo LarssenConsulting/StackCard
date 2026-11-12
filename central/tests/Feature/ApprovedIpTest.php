@@ -67,6 +67,20 @@ it('lists the server again once an admin approves the new ip', function () {
         ->assertJsonPath('_meta.hostvars.web01.ansible_host', '198.51.100.9');
 });
 
+it('approves only the ip shown to the admin, not one reported since', function () {
+    $server = serverWithChangedIp();
+    $this->actingAs(adminUser(), 'web');
+
+    // The modal showed 198.51.100.9; the agent then reported 192.0.2.66 before the click.
+    Livewire::test(ViewServer::class, ['record' => $server->getKey()])
+        ->mountAction('approveIp')
+        ->tap(fn () => $server->forceFill(['primary_ip' => '192.0.2.66'])->save())
+        ->callMountedAction()
+        ->assertNotified('L’IP a changé entre-temps');
+
+    expect($server->refresh()->approved_ip)->toBe('203.0.113.5');
+});
+
 it('hides the approval from a plain user', function () {
     $server = serverWithChangedIp();
     $this->actingAs(plainUser(), 'web');

@@ -44,7 +44,7 @@ servers:
     description: Le central StackCard
     variables:
       central:
-        default: stackcard.larssen-homelab.fr
+        default: stackcard.example.com
         description: Adresse communiquée par l'administrateur
 security:
   - bearerAuth: []
