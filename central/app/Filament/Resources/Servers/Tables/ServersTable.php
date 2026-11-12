@@ -36,7 +36,6 @@ class ServersTable
                     ->label('Adresse')
                     ->state(fn (Server $record) => $record->effectiveAddress())
                     ->description(fn (Server $record) => match (true) {
-                        $record->ansible_excluded => 'hors Ansible',
                         filled($record->connect_address) => 'manuelle',
                         $record->ipChangePending() => "IP changée, à valider (validée : {$record->approved_ip})",
                         default => null,
@@ -45,6 +44,24 @@ class ServersTable
                     ->searchable(['primary_ip', 'connect_address'])
                     ->copyable()
                     ->placeholder('—'),
+                TextColumn::make('ansible')
+                    ->label('Ansible')
+                    ->badge()
+                    ->state(fn (Server $record) => Server::ANSIBLE_STATES[$record->ansibleState()])
+                    ->color(fn (Server $record) => match ($record->ansibleState()) {
+                        'included' => 'success',
+                        'ip_pending' => 'warning',
+                        'no_address' => 'danger',
+                        default => 'gray',
+                    })
+                    ->tooltip(fn (Server $record) => match ($record->ansibleState()) {
+                        'included' => 'Dans l’inventaire Ansible, joint à '.$record->trustedAddress()
+                            .($record->connect_port ? ':'.$record->connect_port : ''),
+                        'excluded' => 'Exclu par un admin (fiche du serveur > Modifier)',
+                        'ip_pending' => 'L’agent signale une nouvelle IP : à valider avant qu’Ansible s’y connecte',
+                        'no_address' => 'Aucune adresse connue : saisir une adresse de connexion',
+                        default => 'Serveur en attente ou révoqué',
+                    }),
                 TextColumn::make('os')->label('Système')->toggleable()->placeholder('—'),
                 TextColumn::make('sites_count')->label('Sites')->counts('sites')->sortable(),
                 TextColumn::make('databases_count')->label('Bases')->counts('databases')->sortable(),

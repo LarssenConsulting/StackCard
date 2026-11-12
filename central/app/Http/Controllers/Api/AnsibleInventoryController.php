@@ -19,7 +19,7 @@ class AnsibleInventoryController extends Controller
             ->where('ansible_excluded', false)
             ->orderBy('slug')
             ->get()
-            ->filter(fn (Server $server) => $server->trustedAddress() !== null);
+            ->filter(fn (Server $server) => $server->ansibleState() === 'included');
 
         $hostvars = [];
         $groups = [];

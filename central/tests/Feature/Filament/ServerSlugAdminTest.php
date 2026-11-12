@@ -125,6 +125,29 @@ describe('lock slugs action', function () {
     });
 });
 
+it('shows in the server list whether each server is in the Ansible inventory', function () {
+    $make = function (string $name, array $attributes, ?string $approved) {
+        $server = Server::create(array_merge(['name' => $name, 'status' => Server::STATUS_ACTIVE], $attributes));
+
+        $server->forceFill(['approved_ip' => $approved])->save();
+
+        return $server;
+    };
+    $included = $make('in', ['primary_ip' => '203.0.113.1'], '203.0.113.1');
+    $excluded = $make('out', ['primary_ip' => '203.0.113.2', 'ansible_excluded' => true], '203.0.113.2');
+    $pending = $make('moved', ['primary_ip' => '203.0.113.9'], '203.0.113.3');
+    $nowhere = $make('nowhere', [], null);
+    $revoked = $make('gone', ['primary_ip' => '203.0.113.4', 'status' => Server::STATUS_REVOKED], '203.0.113.4');
+    $this->actingAs(plainUser(), 'web');
+
+    Livewire::test(ListServers::class)
+        ->assertTableColumnStateSet('ansible', 'oui', $included)
+        ->assertTableColumnStateSet('ansible', 'exclu', $excluded)
+        ->assertTableColumnStateSet('ansible', 'IP à valider', $pending)
+        ->assertTableColumnStateSet('ansible', 'sans adresse', $nowhere)
+        ->assertTableColumnStateSet('ansible', 'non', $revoked);
+});
+
 it('lets an admin exclude a server from Ansible, never a plain user', function () {
     $server = Server::create(['name' => 'bastion']);
 

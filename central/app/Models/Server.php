@@ -80,6 +80,27 @@ class Server extends Model
         return $this->primary_ip !== null && $this->primary_ip === $this->approved_ip ? $this->primary_ip : null;
     }
 
+    /** Labels of ansibleState(), for the admin. */
+    public const ANSIBLE_STATES = [
+        'included' => 'oui',
+        'excluded' => 'exclu',
+        'ip_pending' => 'IP à valider',
+        'no_address' => 'sans adresse',
+        'inactive' => 'non',
+    ];
+
+    /** Whether, and why not, the server is in the Ansible inventory. The inventory uses the same rule. */
+    public function ansibleState(): string
+    {
+        return match (true) {
+            $this->status !== self::STATUS_ACTIVE => 'inactive',
+            $this->ansible_excluded => 'excluded',
+            $this->trustedAddress() !== null => 'included',
+            $this->ipChangePending() => 'ip_pending',
+            default => 'no_address',
+        };
+    }
+
     /** Numeric key = id, anything else = slug. */
     public static function findByKey(string $key): self
     {
