@@ -456,6 +456,12 @@ components:
           type: integer
           nullable: true
           description: Port de connexion.
+        approved_ip:
+          type: string
+          nullable: true
+          description: >-
+            IP principale validée : fixée au premier inventaire, puis changée seulement par un admin.
+            Quand `primary_ip` en diffère, l'inventaire Ansible ignore le serveur (sauf `connect_address`).
         hostname:
           type: string
           nullable: true

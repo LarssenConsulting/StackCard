@@ -60,6 +60,25 @@ class Server extends Model
         return $this->connect_address ?: $this->primary_ip;
     }
 
+    /** The agent reports an IP an admin has not accepted yet (`approved_ip` is pinned at the first inventory). */
+    public function ipChangePending(): bool
+    {
+        return $this->primary_ip !== null && $this->approved_ip !== null && $this->primary_ip !== $this->approved_ip;
+    }
+
+    /**
+     * Where Ansible may connect: the manual address, else the reported IP only while it is the approved
+     * one. A compromised agent could otherwise point Semaphore's SSH credentials at another machine.
+     */
+    public function trustedAddress(): ?string
+    {
+        if (filled($this->connect_address)) {
+            return $this->connect_address;
+        }
+
+        return $this->primary_ip !== null && $this->primary_ip === $this->approved_ip ? $this->primary_ip : null;
+    }
+
     /** Numeric key = id, anything else = slug. */
     public static function findByKey(string $key): self
     {

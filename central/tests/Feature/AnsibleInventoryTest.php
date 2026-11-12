@@ -2,12 +2,16 @@
 
 use App\Models\Server;
 
+/** An active server whose reported IP is the approved one (as after its first inventory). */
 function ansibleServer(string $name, array $attributes = []): Server
 {
-    return Server::create(array_merge([
+    $server = Server::create(array_merge([
         'name' => $name, 'machine_id' => 'mid-'.$name, 'status' => Server::STATUS_ACTIVE,
         'primary_ip' => '203.0.113.5', 'last_seen_at' => now(),
     ], $attributes));
+    $server->forceFill(['approved_ip' => $server->primary_ip])->save();
+
+    return $server;
 }
 
 beforeEach(function () {
@@ -43,6 +47,19 @@ it('uses the manual connection address and port', function () {
     readApi($this, $this->token, 'inventory/ansible')
         ->assertJsonPath('_meta.hostvars.web01.ansible_host', 'web01.vpn.example')
         ->assertJsonPath('_meta.hostvars.web01.ansible_port', 2222);
+});
+
+it('never sends agent text that Ansible would template', function () {
+    ansibleServer('web01', [
+        'hostname' => "{{ lookup('pipe', 'id') }}", 'fqdn' => '{% raw %}x', 'os' => 'Ubuntu {# c #} 24.04',
+    ]);
+
+    $vars = readApi($this, $this->token, 'inventory/ansible')->assertOk()->json('_meta.hostvars.web01');
+
+    expect($vars['stackcard_hostname'])->toBeNull()
+        ->and($vars['stackcard_fqdn'])->toBeNull()
+        ->and($vars['stackcard_os'])->toBeNull()
+        ->and($vars['stackcard_name'])->toBe('web01');
 });
 
 it('leaves out pending, revoked and addressless servers', function () {

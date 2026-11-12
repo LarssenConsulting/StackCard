@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Servers\Pages;
 
 use App\Actions\LinkDatabases;
+use App\Filament\Resources\Servers\Actions\ApproveIpAction;
 use App\Filament\Resources\Servers\Actions\GenerateEnrollmentTokenAction;
 use App\Filament\Resources\Servers\ServerResource;
 use App\Models\Server;
@@ -19,6 +20,7 @@ class ViewServer extends ViewRecord
     {
         return [
             GenerateEnrollmentTokenAction::make(),
+            ApproveIpAction::make(),
             Action::make('revoke')
                 ->label('Révoquer')
                 ->icon('heroicon-o-no-symbol')

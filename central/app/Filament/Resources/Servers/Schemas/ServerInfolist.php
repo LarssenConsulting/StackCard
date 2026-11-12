@@ -31,6 +31,13 @@ class ServerInfolist
                         TextEntry::make('hostname')->label('Hostname')->placeholder('—'),
                         TextEntry::make('fqdn')->label('FQDN')->placeholder('—')->copyable(),
                         TextEntry::make('primary_ip')->label('IP principale')->placeholder('—')->copyable(),
+                        TextEntry::make('approved_ip')
+                            ->label('IP validée pour Ansible')
+                            ->placeholder('—')
+                            ->color(fn (Server $record) => $record->ipChangePending() ? 'warning' : null)
+                            ->helperText(fn (Server $record) => $record->ipChangePending()
+                                ? 'L’agent signale une autre IP : Ansible ignore ce serveur (sauf adresse de connexion manuelle) tant qu’un admin ne l’a pas validée.'
+                                : null),
                         TextEntry::make('ips.address')->label('Toutes les IP')->listWithLineBreaks()->placeholder('—'),
                     ]),
                 Section::make('Système')

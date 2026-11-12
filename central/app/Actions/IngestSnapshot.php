@@ -68,8 +68,13 @@ class IngestSnapshot
             'last_source_ip' => $sourceIp,
         ]);
         if ($firstInventory && $server->slug_locked_at === null) {
-            $server->forceFill(['slug_locked_at' => now()])->save();
+            $server->forceFill(['slug_locked_at' => now()]);
         }
+        // The first IP an agent reports is trusted; a later change waits for an admin (ApproveIpAction).
+        if ($server->approved_ip === null && $server->primary_ip !== null) {
+            $server->forceFill(['approved_ip' => $server->primary_ip]);
+        }
+        $server->save();
 
         $this->clearState($server);
         $this->storeIps($server, $info['interfaces']);

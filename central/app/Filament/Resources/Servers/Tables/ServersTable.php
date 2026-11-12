@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Servers\Tables;
 
+use App\Filament\Resources\Servers\Actions\ApproveIpAction;
 use App\Filament\Resources\Servers\Actions\GenerateEnrollmentTokenAction;
 use App\Filament\Resources\Servers\Actions\UpgradeAgentAction;
 use App\Filament\Resources\Servers\Schemas\ServerStatus;
@@ -34,7 +35,12 @@ class ServersTable
                 TextColumn::make('primary_ip')
                     ->label('Adresse')
                     ->state(fn (Server $record) => $record->effectiveAddress())
-                    ->description(fn (Server $record) => filled($record->connect_address) ? 'manuelle' : null)
+                    ->description(fn (Server $record) => match (true) {
+                        filled($record->connect_address) => 'manuelle',
+                        $record->ipChangePending() => "IP changée, à valider (validée : {$record->approved_ip})",
+                        default => null,
+                    })
+                    ->color(fn (Server $record) => blank($record->connect_address) && $record->ipChangePending() ? 'warning' : null)
                     ->searchable(['primary_ip', 'connect_address'])
                     ->copyable()
                     ->placeholder('—'),
@@ -67,6 +73,7 @@ class ServersTable
                 ViewAction::make(),
                 EditAction::make(),
                 GenerateEnrollmentTokenAction::make()->label('Jeton d’enrôlement'),
+                ApproveIpAction::make(),
             ]);
     }
 }

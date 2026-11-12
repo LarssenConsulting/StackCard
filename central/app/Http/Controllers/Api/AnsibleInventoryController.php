@@ -18,7 +18,7 @@ class AnsibleInventoryController extends Controller
             ->where('status', Server::STATUS_ACTIVE)
             ->orderBy('slug')
             ->get()
-            ->filter(fn (Server $server) => $server->effectiveAddress() !== null);
+            ->filter(fn (Server $server) => $server->trustedAddress() !== null);
 
         $hostvars = [];
         $groups = [];
@@ -27,16 +27,16 @@ class AnsibleInventoryController extends Controller
             $slug = (string) $server->slug;
             $stale = $server->isStale();
 
-            $vars = ['ansible_host' => $server->effectiveAddress()];
+            $vars = ['ansible_host' => $server->trustedAddress()];
             if ($server->connect_port) {
                 $vars['ansible_port'] = (int) $server->connect_port;
             }
             $hostvars[$slug] = $vars + [
                 'stackcard_id' => $server->id,
-                'stackcard_name' => $server->name,
-                'stackcard_hostname' => $server->hostname,
-                'stackcard_fqdn' => $server->fqdn,
-                'stackcard_os' => $server->os,
+                'stackcard_name' => self::inert($server->name),
+                'stackcard_hostname' => self::inert($server->hostname),
+                'stackcard_fqdn' => self::inert($server->fqdn),
+                'stackcard_os' => self::inert($server->os),
                 'stackcard_stale' => $stale,
                 'stackcard_last_seen_at' => $server->last_seen_at,
             ];
@@ -68,5 +68,15 @@ class AnsibleInventoryController extends Controller
         }
 
         return response()->json($inventory);
+    }
+
+    /**
+     * Ansible templates variable values when they are used: a hostname like `{{ lookup('pipe', …) }}`
+     * reported by a compromised agent would run on the Semaphore controller. Free text that could open
+     * a Jinja block is not sent at all.
+     */
+    private static function inert(?string $value): ?string
+    {
+        return $value !== null && preg_match('/\{[{%#]/', $value) ? null : $value;
     }
 }

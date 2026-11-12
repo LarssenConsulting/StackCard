@@ -10,8 +10,13 @@ Le central expose un inventaire dynamique, `GET /api/v1/inventory/ansible`, et l
 
 ## Ce que contient l'inventaire
 
-- Les serveurs **actifs** qui ont une adresse : celle saisie à la main (« adresse de connexion »), sinon l'IP
-  principale remontée par l'agent. Les serveurs en attente, révoqués ou sans adresse sont absents.
+- Les serveurs **actifs** qui ont une adresse sûre : celle saisie à la main (« adresse de connexion »), sinon
+  l'IP principale remontée par l'agent **tant qu'elle est l'IP validée**. Les serveurs en attente, révoqués ou
+  sans adresse sont absents.
+- L'IP validée est fixée au premier inventaire. Si l'agent signale ensuite une autre IP, le serveur **sort de
+  l'inventaire** jusqu'à ce qu'un admin clique « Valider la nouvelle IP » (liste ou fiche du serveur, adresse
+  en orange). Un serveur compromis ne peut donc pas diriger Semaphore, et ses identifiants SSH, vers une autre
+  machine.
 - Variables d'hôte : `ansible_host`, `ansible_port` (seulement si un port est défini), `stackcard_id`,
   `stackcard_name`, `stackcard_hostname`, `stackcard_fqdn`, `stackcard_os`, `stackcard_stale`,
   `stackcard_last_seen_at` (ISO 8601, UTC).
@@ -27,6 +32,16 @@ jeton affiché une seule fois. Il porte la capacité `inventory:read`.
 
 Si Semaphore passe par un reverse proxy, celui-ci doit figurer dans `DISCOVER_TRUSTED_PROXIES` du central,
 sinon l'adresse vue est celle du proxy.
+
+## Garder la vérification des clés d'hôte
+
+Ne désactivez pas la vérification des clés SSH (`ANSIBLE_HOST_KEY_CHECKING=False`, `host_key_checking = False`) :
+c'est la seconde barrière si une adresse pointe vers la mauvaise machine. Enregistrez les clés d'hôte de vos
+serveurs dans le `known_hosts` de Semaphore (par exemple `ssh-keyscan <adresse> >> ~/.ssh/known_hosts` après
+vérification de l'empreinte).
+
+Les variables `stackcard_hostname`, `stackcard_fqdn` et `stackcard_os` viennent de l'agent : une valeur qui
+contient `{{`, `{%` ou `{#` est envoyée vide, pour qu'Ansible ne l'interprète jamais comme un modèle Jinja.
 
 ## 2. Déclarer l'environnement dans Semaphore
 
