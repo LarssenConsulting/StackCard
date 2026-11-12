@@ -16,6 +16,7 @@ class AnsibleInventoryController extends Controller
     {
         $servers = Server::query()
             ->where('status', Server::STATUS_ACTIVE)
+            ->where('ansible_excluded', false)
             ->orderBy('slug')
             ->get()
             ->filter(fn (Server $server) => $server->trustedAddress() !== null);

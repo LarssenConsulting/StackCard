@@ -27,11 +27,12 @@ class Server extends Model
         'apache_version', 'mysql_version', 'docker_version', 'agent_version', 'status', 'last_seen_at',
         'last_source_ip', 'notes', 'ufw_status', 'ufw_logging', 'ufw_default_incoming',
         'ufw_default_outgoing', 'ufw_default_routed', 'slug', 'connect_address', 'connect_port',
+        'ansible_excluded',
     ];
 
     protected function casts(): array
     {
-        return ['last_seen_at' => 'datetime', 'slug_locked_at' => 'datetime'];
+        return ['last_seen_at' => 'datetime', 'slug_locked_at' => 'datetime', 'ansible_excluded' => 'boolean'];
     }
 
     protected static function booted(): void

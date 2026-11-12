@@ -94,7 +94,7 @@ class ServerReadController extends Controller
                 'apache_version', 'mysql_version', 'docker_version', 'agent_version', 'last_seen_at',
             ]),
             'slug_locked' => $server->isSlugLocked(),
-            ...$server->only(['connect_address', 'connect_port', 'approved_ip']),
+            ...$server->only(['connect_address', 'connect_port', 'approved_ip', 'ansible_excluded']),
             'stale' => $server->last_seen_at === null || $server->last_seen_at->lt(now()->subHours(Server::STALE_AFTER_HOURS)),
         ];
     }

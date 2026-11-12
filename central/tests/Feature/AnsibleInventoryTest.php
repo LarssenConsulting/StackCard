@@ -62,6 +62,19 @@ it('never sends agent text that Ansible would template', function () {
         ->and($vars['stackcard_name'])->toBe('web01');
 });
 
+it('leaves out a server an admin excluded, but keeps it in the read API', function () {
+    ansibleServer('web01');
+    ansibleServer('bastion', ['primary_ip' => '203.0.113.9', 'ansible_excluded' => true]);
+
+    readApi($this, $this->token, 'inventory/ansible')
+        ->assertJsonPath('all.hosts', ['web01'])
+        ->assertJsonMissingPath('_meta.hostvars.bastion');
+
+    readApi($this, $this->token, 'servers/bastion')
+        ->assertOk()
+        ->assertJsonPath('data.ansible_excluded', true);
+});
+
 it('leaves out pending, revoked and addressless servers', function () {
     ansibleServer('web01');
     ansibleServer('wait01', ['status' => Server::STATUS_PENDING]);

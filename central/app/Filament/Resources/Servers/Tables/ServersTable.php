@@ -36,6 +36,7 @@ class ServersTable
                     ->label('Adresse')
                     ->state(fn (Server $record) => $record->effectiveAddress())
                     ->description(fn (Server $record) => match (true) {
+                        $record->ansible_excluded => 'hors Ansible',
                         filled($record->connect_address) => 'manuelle',
                         $record->ipChangePending() => "IP changée, à valider (validée : {$record->approved_ip})",
                         default => null,

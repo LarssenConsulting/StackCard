@@ -125,6 +125,23 @@ describe('lock slugs action', function () {
     });
 });
 
+it('lets an admin exclude a server from Ansible, never a plain user', function () {
+    $server = Server::create(['name' => 'bastion']);
+
+    $this->actingAs(plainUser(), 'web');
+    Livewire::test(EditServer::class, ['record' => $server->getKey()])
+        ->fillForm(['ansible_excluded' => true])
+        ->call('save');
+    expect($server->refresh()->ansible_excluded)->toBeFalse();
+
+    $this->actingAs(adminUser(), 'web');
+    Livewire::test(EditServer::class, ['record' => $server->getKey()])
+        ->fillForm(['ansible_excluded' => true])
+        ->call('save')
+        ->assertHasNoFormErrors();
+    expect($server->refresh()->ansible_excluded)->toBeTrue();
+});
+
 it('lets a non-admin create a server whose slug collides: it is auto-suffixed', function () {
     Server::create(['name' => 'web01', 'slug' => 'web01']);
     $this->actingAs(plainUser(), 'web');

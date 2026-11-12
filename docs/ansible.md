@@ -13,6 +13,9 @@ Le central expose un inventaire dynamique, `GET /api/v1/inventory/ansible`, et l
 - Les serveurs **actifs** qui ont une adresse sûre : celle saisie à la main (« adresse de connexion »), sinon
   l'IP principale remontée par l'agent **tant qu'elle est l'IP validée**. Les serveurs en attente, révoqués ou
   sans adresse sont absents.
+- Un admin peut **exclure** un serveur de l'inventaire (fiche du serveur > Modifier > « Exclure de l'inventaire
+  Ansible ») : par exemple un bastion joignable seulement par VPN, qui ne doit pas porter la clé de Semaphore.
+  Il reste visible partout ailleurs dans StackCard et dans l'API.
 - L'IP validée est fixée au premier inventaire. Si l'agent signale ensuite une autre IP, le serveur **sort de
   l'inventaire** jusqu'à ce qu'un admin clique « Valider la nouvelle IP » (liste ou fiche du serveur, adresse
   en orange). Un serveur compromis ne peut donc pas diriger Semaphore, et ses identifiants SSH, vers une autre

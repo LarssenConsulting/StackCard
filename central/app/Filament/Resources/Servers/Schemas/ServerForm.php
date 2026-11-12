@@ -6,6 +6,7 @@ use App\Models\Server;
 use App\Support\ServerSlug;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -61,6 +62,10 @@ class ServerForm
                     ->integer()
                     ->minValue(1)
                     ->maxValue(65535)
+                    ->disabled(fn () => ! self::isAdmin()),
+                Toggle::make('ansible_excluded')
+                    ->label('Exclure de l’inventaire Ansible')
+                    ->helperText('Le serveur reste dans StackCard, mais Ansible (Semaphore) ne le voit plus : par exemple un bastion joignable seulement par VPN.')
                     ->disabled(fn () => ! self::isAdmin()),
                 Textarea::make('notes')
                     ->label('Notes')

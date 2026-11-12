@@ -456,6 +456,9 @@ components:
           type: integer
           nullable: true
           description: Port de connexion.
+        ansible_excluded:
+          type: boolean
+          description: Exclu de l'inventaire Ansible par un admin (le serveur reste dans les autres réponses).
         approved_ip:
           type: string
           nullable: true
