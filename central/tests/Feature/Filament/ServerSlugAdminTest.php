@@ -125,6 +125,47 @@ describe('lock slugs action', function () {
     });
 });
 
+describe('change slug action', function () {
+    it('lets an admin rename a locked slug once confirmed', function () {
+        $server = lockedServer('typo-srv');
+        $this->actingAs(adminUser(), 'web');
+
+        Livewire::test(ViewServer::class, ['record' => $server->getKey()])
+            ->assertActionVisible('changeSlug')
+            ->callAction('changeSlug', data: ['slug' => 'good-srv', 'confirm' => true])
+            ->assertHasNoActionErrors()
+            ->assertNotified('Slug changé : typo-srv → good-srv');
+
+        expect($server->refresh()->slug)->toBe('good-srv')
+            ->and($server->isSlugLocked())->toBeTrue();
+    });
+
+    it('refuses without confirmation, a taken slug or a bad format', function () {
+        $server = lockedServer('typo-srv');
+        lockedServer('taken');
+        $this->actingAs(adminUser(), 'web');
+        $call = fn (array $data) => Livewire::test(ViewServer::class, ['record' => $server->getKey()])
+            ->callAction('changeSlug', data: $data);
+
+        $call(['slug' => 'good-srv', 'confirm' => false])->assertHasActionErrors(['confirm']);
+        $call(['slug' => 'taken', 'confirm' => true])->assertHasActionErrors(['slug']);
+        $call(['slug' => 'Bad_Slug', 'confirm' => true])->assertHasActionErrors(['slug']);
+
+        expect($server->refresh()->slug)->toBe('typo-srv');
+    });
+
+    it('is hidden from a plain user and for a slug not yet locked', function () {
+        $locked = lockedServer('typo-srv');
+        $free = Server::create(['name' => 'free']);
+
+        $this->actingAs(plainUser(), 'web');
+        Livewire::test(ViewServer::class, ['record' => $locked->getKey()])->assertActionHidden('changeSlug');
+
+        $this->actingAs(adminUser(), 'web');
+        Livewire::test(ViewServer::class, ['record' => $free->getKey()])->assertActionHidden('changeSlug');
+    });
+});
+
 it('shows in the server list whether each server is in the Ansible inventory', function () {
     $make = function (string $name, array $attributes, ?string $approved) {
         $server = Server::create(array_merge(['name' => $name, 'status' => Server::STATUS_ACTIVE], $attributes));

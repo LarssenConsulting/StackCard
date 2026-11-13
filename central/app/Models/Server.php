@@ -50,6 +50,29 @@ class Server extends Model
         });
     }
 
+    /**
+     * The one way to change a locked slug, for an admin fixing a mistake: it breaks every tool that matches
+     * on the old slug (Ansible host names, the CVE tracker's Todoist lines). The `updating` guard still
+     * refuses any other change; this bypasses it on purpose with a query-builder update and leaves a log.
+     */
+    public function renameLockedSlug(string $slug): void
+    {
+        if (! ServerSlug::isValid($slug)) {
+            throw new \InvalidArgumentException("Slug invalide : {$slug}");
+        }
+        if (static::query()->where('slug', $slug)->whereKeyNot($this->getKey())->exists()) {
+            throw new \InvalidArgumentException("Slug déjà pris : {$slug}");
+        }
+
+        $old = $this->slug;
+        static::query()->whereKey($this->getKey())->update(['slug' => $slug]);
+        $this->refresh();
+
+        \Illuminate\Support\Facades\Log::warning('discover.slug.renamed', [
+            'server_id' => $this->getKey(), 'from' => $old, 'to' => $slug, 'user_id' => auth()->id(),
+        ]);
+    }
+
     public function isSlugLocked(): bool
     {
         return $this->slug_locked_at !== null;
