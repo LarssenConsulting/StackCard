@@ -17,8 +17,16 @@ discover-agent (Python, root, lecture seule) ─HTTPS─▶ Laravel + Filament +
   site → base (y compris d'un serveur à l'autre), interface d'administration avec double
   authentification obligatoire.
 - **`docs/`** — [installer le central](docs/install-central.md),
-  [installer l'agent](docs/install-agent.md), la [spécification](docs/superpowers/specs/2026-10-14-discover-design.md)
+  [installer l'agent](docs/install-agent.md), [Ansible et Semaphore](docs/ansible.md),
+  l'[API de lecture](docs/api/) (OpenAPI et Postman), la [spécification](docs/superpowers/specs/2026-10-14-discover-design.md)
   et le [plan d'implémentation](docs/superpowers/plans/2026-10-14-discover-v1.md).
+
+## Wiki
+
+Chaque central publie un wiki d'exploitation, consultable **sans connexion** à l'adresse
+`https://<votre-central>/wiki` : vue d'ensemble avec schémas, agent, administration, API, Ansible et
+Semaphore, et procédures pas à pas (ajouter un serveur, mettre à jour l'agent ou les paquets, gérer une
+crise CVE, réinstaller un serveur). Ses pages sont dans `central/resources/views/wiki/`.
 
 ## Sécurité en bref
 
