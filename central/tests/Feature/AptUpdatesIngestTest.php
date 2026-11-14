@@ -232,6 +232,20 @@ it('skips malformed entries instead of rejecting the inventory', function () {
         ->and($server->updatesState())->toBe('stale');
 });
 
+it('keeps only the suite of an origin, even from an agent 0.6.0', function () {
+    ingestUpdates($this, function (array $s) {
+        $s['sections']['apt_updates']['data']['upgrades'] = [
+            ['package' => 'nodejs', 'arch' => 'amd64', 'installed' => '1', 'candidate' => '2', 'origins' => ['. nodistro:nodistro'], 'security' => false],
+            ['package' => 'apache2', 'arch' => 'amd64', 'installed' => '1', 'candidate' => '2', 'origins' => ['Docker:noble', 'noble-updates'], 'security' => false],
+        ];
+
+        return $s;
+    });
+
+    $origins = $this->server->updates()->orderBy('package')->pluck('origins', 'package')->all();
+    expect($origins)->toBe(['apache2' => ['noble', 'noble-updates'], 'nodejs' => ['nodistro']]);
+});
+
 it('keeps only string origins, trimmed, from a good entry', function () {
     ingestUpdates($this, function (array $s) {
         $s['sections']['apt_updates']['data']['upgrades'] = [

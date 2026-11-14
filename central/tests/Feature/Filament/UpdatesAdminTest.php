@@ -133,3 +133,22 @@ it('shows held and reboot-triggering packages in the server tab header', functio
         ->assertSeeText('linux-image-6.8.0-48-generic')
         ->assertSeeText('paquets retenus : php8.3-fpm');
 });
+
+it('states the freshness and the number of updates in plain words in the server tab header', function () {
+    $server = updServer('web01', ['updates_count' => 7, 'security_updates_count' => 0]);
+    $this->actingAs(plainUser(), 'web');
+
+    Livewire::test(UpdatesRelationManager::class, ['ownerRecord' => $server, 'pageClass' => ViewServer::class])
+        ->assertSeeText('Données : à jour')
+        ->assertSeeText('7 mises à jour en attente, aucune de sécurité')
+        ->assertDontSeeText('État : 7');
+
+    $other = updServer('web02', ['updates_count' => 3, 'security_updates_count' => 1]);
+    Livewire::test(UpdatesRelationManager::class, ['ownerRecord' => $other, 'pageClass' => ViewServer::class])
+        ->assertSeeText('3 mises à jour en attente, dont 1 de sécurité');
+
+    $unknown = Server::create(['name' => 'never-reported', 'slug' => 'never-reported', 'status' => Server::STATUS_ACTIVE]);
+    Livewire::test(UpdatesRelationManager::class, ['ownerRecord' => $unknown, 'pageClass' => ViewServer::class])
+        ->assertSeeText('Données : inconnues')
+        ->assertDontSeeText('mises à jour en attente');
+});

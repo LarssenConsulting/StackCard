@@ -197,6 +197,21 @@ class IngestSnapshot
      *
      * @return array<string, array{package: string, arch: string, installed_version: ?string, candidate_version: string, security: bool, origins: array<int, string>}>
      */
+    /** Same rule as the agent's `_suite`: what follows the last "/", else the last ":". */
+    private static function suite(string $origin): string
+    {
+        foreach (['/', ':'] as $separator) {
+            $position = strrpos($origin, $separator);
+            if ($position !== false) {
+                $suite = trim(substr($origin, $position + 1));
+
+                return $suite !== '' ? $suite : $origin;
+            }
+        }
+
+        return $origin;
+    }
+
     private function cleanUpgrades(array $upgrades): array
     {
         $text = fn (mixed $value, int $max): ?string => is_string($value) && trim($value) !== '' ? mb_substr(trim($value), 0, $max) : null;
@@ -216,7 +231,8 @@ class IngestSnapshot
             if (is_array($upgrade['origins'] ?? null)) {
                 foreach ($upgrade['origins'] as $origin) {
                     if (($origin = $text($origin, 255)) !== null) {
-                        $origins[] = $origin;
+                        // Agents 0.6.0 kept some origins whole (". nodistro:nodistro"): keep the suite only.
+                        $origins[] = self::suite($origin);
                     }
                     if (count($origins) >= 50) {
                         break;

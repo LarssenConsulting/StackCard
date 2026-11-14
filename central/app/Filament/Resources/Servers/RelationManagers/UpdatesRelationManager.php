@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Servers\RelationManagers;
 
-use App\Filament\Resources\Servers\Tables\ServersTable;
 use App\Models\ServerUpdate;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
@@ -56,7 +55,22 @@ class UpdatesRelationManager extends RelationManager
 
     private static function summary($server): string
     {
-        $parts = ['État : '.ServersTable::updatesLabel($server)];
+        $state = $server->updatesState();
+        $parts = ['Données : '.match ($state) {
+            'ok' => 'à jour',
+            'stale' => 'périmées',
+            default => 'inconnues',
+        }];
+        if ($state !== 'unknown') {
+            $total = (int) $server->updates_count;
+            $security = (int) $server->security_updates_count;
+            $pending = $total.' '.($total === 1 ? 'mise à jour en attente' : 'mises à jour en attente');
+            $parts[] = match (true) {
+                $total === 0 => 'aucune mise à jour en attente',
+                $security === 0 => $pending.', aucune de sécurité',
+                default => $pending.', dont '.$security.' de sécurité',
+            };
+        }
         $parts[] = $server->apt_cache_updated_at
             ? 'cache APT : '.$server->apt_cache_updated_at->diffForHumans()
             : 'cache APT : date inconnue';

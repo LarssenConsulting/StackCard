@@ -61,8 +61,13 @@ def cache_updated_at(stat=os.stat, listdir=os.listdir):
 
 
 def _suite(origin):
+    """Suite of an apt origin: `Ubuntu:24.04/noble-updates` → `noble-updates`, `Docker:noble` → `noble`,
+    `. nodistro:nodistro` (NodeSource, no label) → `nodistro`."""
     origin = origin.strip()
-    return origin.rsplit("/", 1)[1] if "/" in origin else origin
+    for separator in ("/", ":"):
+        if separator in origin:
+            return origin.rsplit(separator, 1)[1].strip() or origin
+    return origin
 
 
 def parse_simulation(text):

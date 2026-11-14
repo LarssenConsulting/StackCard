@@ -119,11 +119,16 @@ class ParseSimulationTest(unittest.TestCase):
             "Inst b [1] (2 Ubuntu:24.04/noble-infra-security [amd64])\n"
             "Inst c [1] (2 Docker:noble [amd64])\n"
             "Inst d [1] (2 Ubuntu:24.04/noble-updates, Ubuntu:24.04/noble-updates [amd64])\n"
+            "Inst nodejs [22.23.4-1nodesource1] (22.23.5-1nodesource1 . nodistro:nodistro [amd64])\n"
+            "Inst apache2 [2.4.69-1] (2.4.71-1 LP-PPA-example-apache2:24.04/noble [amd64])\n"
         )
         by = by_name(apt_updates.parse_simulation(text))
         self.assertTrue(by["a"]["security"])
         self.assertTrue(by["b"]["security"])
-        self.assertEqual(by["c"]["origins"], ["Docker:noble"])
+        self.assertEqual(by["c"]["origins"], ["noble"])
+        self.assertEqual(by["nodejs"]["origins"], ["nodistro"])
+        self.assertFalse(by["nodejs"]["security"])
+        self.assertEqual(by["apache2"]["origins"], ["noble"])
         self.assertFalse(by["c"]["security"])
         self.assertEqual(by["d"]["origins"], ["noble-updates"])
 
