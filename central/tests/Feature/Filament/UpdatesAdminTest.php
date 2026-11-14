@@ -129,9 +129,13 @@ it('shows held and reboot-triggering packages in the server tab header', functio
     $this->actingAs(plainUser(), 'web');
 
     Livewire::test(UpdatesRelationManager::class, ['ownerRecord' => $server, 'pageClass' => ViewServer::class])
-        ->assertSeeText('redémarrage requis')
+        ->assertSeeText('Redémarrage')
+        ->assertSeeText('Requis')
+        ->assertSeeText('demandé par')
         ->assertSeeText('linux-image-6.8.0-48-generic')
-        ->assertSeeText('paquets retenus : php8.3-fpm');
+        ->assertSeeText('Paquets retenus')
+        ->assertSeeText('php8.3-fpm')
+        ->assertSeeText('bloqués par apt-mark hold');
 });
 
 it('states the freshness and the number of updates in plain words in the server tab header', function () {
@@ -139,16 +143,23 @@ it('states the freshness and the number of updates in plain words in the server 
     $this->actingAs(plainUser(), 'web');
 
     Livewire::test(UpdatesRelationManager::class, ['ownerRecord' => $server, 'pageClass' => ViewServer::class])
-        ->assertSeeText('Données : à jour')
-        ->assertSeeText('7 mises à jour en attente, aucune de sécurité')
+        ->assertSeeText('À jour')
+        ->assertSeeText('mises à jour')
+        ->assertSeeText('aucune de sécurité')
         ->assertDontSeeText('État : 7');
+
+    expect(UpdatesRelationManager::summaryData($server))
+        ->pending->toBe(7)->security->toBe(0)
+        ->freshness->toBe(['label' => 'À jour', 'color' => 'success']);
 
     $other = updServer('web02', ['updates_count' => 3, 'security_updates_count' => 1]);
     Livewire::test(UpdatesRelationManager::class, ['ownerRecord' => $other, 'pageClass' => ViewServer::class])
-        ->assertSeeText('3 mises à jour en attente, dont 1 de sécurité');
+        ->assertSeeText('1 de sécurité');
+    expect(UpdatesRelationManager::summaryData($other))->pending->toBe(3)->security->toBe(1);
 
     $unknown = Server::create(['name' => 'never-reported', 'slug' => 'never-reported', 'status' => Server::STATUS_ACTIVE]);
     Livewire::test(UpdatesRelationManager::class, ['ownerRecord' => $unknown, 'pageClass' => ViewServer::class])
-        ->assertSeeText('Données : inconnues')
-        ->assertDontSeeText('mises à jour en attente');
+        ->assertSeeText('Inconnues')
+        ->assertSeeText('pas encore de données');
+    expect(UpdatesRelationManager::summaryData($unknown))->pending->toBeNull();
 });

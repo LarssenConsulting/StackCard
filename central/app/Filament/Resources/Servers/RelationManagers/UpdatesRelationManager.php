@@ -7,6 +7,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class UpdatesRelationManager extends RelationManager
 {
@@ -53,42 +54,38 @@ class UpdatesRelationManager extends RelationManager
             ]);
     }
 
-    private static function summary($server): string
+    private static function summary($server): HtmlString
+    {
+        return new HtmlString(view('filament.server-updates.summary', self::summaryData($server))->render());
+    }
+
+    /** What the tab header shows; the view escapes every string. */
+    public static function summaryData($server): array
     {
         $state = $server->updatesState();
-        $parts = ['Données : '.match ($state) {
-            'ok' => 'à jour',
-            'stale' => 'périmées',
-            default => 'inconnues',
-        }];
-        if ($state !== 'unknown') {
-            $total = (int) $server->updates_count;
-            $security = (int) $server->security_updates_count;
-            $pending = $total.' '.($total === 1 ? 'mise à jour en attente' : 'mises à jour en attente');
-            $parts[] = match (true) {
-                $total === 0 => 'aucune mise à jour en attente',
-                $security === 0 => $pending.', aucune de sécurité',
-                default => $pending.', dont '.$security.' de sécurité',
-            };
-        }
-        $parts[] = $server->apt_cache_updated_at
-            ? 'cache APT : '.$server->apt_cache_updated_at->diffForHumans()
-            : 'cache APT : date inconnue';
-        if (filled($server->updates_error)) {
-            $parts[] = 'erreur : '.$server->updates_error;
-        }
-        if ($server->reboot_required) {
-            $parts[] = 'redémarrage requis';
-            $rebootPackages = $server->latestValidSection('kernel')?->data['reboot_required_pkgs'] ?? null;
-            if (is_array($rebootPackages) && $rebootPackages !== []) {
-                $parts[] = 'paquets à l\'origine du redémarrage : '.implode(', ', array_filter($rebootPackages, 'is_string'));
-            }
-        }
+        $rebootPackages = $server->latestValidSection('kernel')?->data['reboot_required_pkgs'] ?? null;
         $held = $server->latestValidSection('apt_updates')?->data['held'] ?? null;
-        if (is_array($held) && $held !== []) {
-            $parts[] = 'paquets retenus : '.implode(', ', array_filter($held, 'is_string'));
-        }
 
-        return implode(' · ', $parts);
+        return [
+            'freshness' => match ($state) {
+                'ok' => ['label' => 'À jour', 'color' => 'success'],
+                'stale' => ['label' => 'Périmées', 'color' => 'warning'],
+                default => ['label' => 'Inconnues', 'color' => 'gray'],
+            },
+            'cache' => $server->apt_cache_updated_at
+                ? 'cache APT '.$server->apt_cache_updated_at->diffForHumans()
+                : 'âge du cache APT inconnu',
+            'pending' => $state === 'unknown' ? null : (int) $server->updates_count,
+            'security' => (int) $server->security_updates_count,
+            'reboot' => match ($server->reboot_required) {
+                true => ['label' => 'Requis', 'color' => 'warning'],
+                false => ['label' => 'Non requis', 'color' => 'gray'],
+                default => ['label' => 'Inconnu', 'color' => 'gray'],
+            },
+            'rebootPackages' => $server->reboot_required && is_array($rebootPackages)
+                ? array_values(array_filter($rebootPackages, 'is_string')) : [],
+            'held' => is_array($held) ? array_values(array_filter($held, 'is_string')) : [],
+            'error' => filled($server->updates_error) ? (string) $server->updates_error : null,
+        ];
     }
 }
