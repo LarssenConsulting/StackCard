@@ -13,6 +13,11 @@
         .sc-cmd-copy:hover { background: rgb(127 127 127 / .15); }
     </style>
 
+    <p style="font-size:.875rem">
+        Fonctionnement, Ansible/Semaphore et procédures pas à pas :
+        <a href="{{ route('wiki') }}" target="_blank" rel="noopener" style="text-decoration:underline">le wiki StackCard</a>.
+    </p>
+
     <div style="display:grid;gap:2rem">
         @foreach ($this->groups() as $group)
             <x-filament::section>
