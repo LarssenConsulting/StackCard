@@ -28,12 +28,12 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->brandName('Discover')
+            ->brandName('StackCard')
             ->login()
             ->profile()
             // Administrators must enrol an authenticator app before using the panel.
             ->multiFactorAuthentication(
-                [AppAuthentication::make()->brandName('Discover')->recoverable()],
+                [AppAuthentication::make()->brandName('StackCard')->recoverable()],
                 isRequired: true,
             )
             ->colors([

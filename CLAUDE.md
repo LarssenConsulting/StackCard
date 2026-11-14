@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Discover inventories Ubuntu 22.04, 24.04 and 26.04 servers (name, IPs, Apache sites, MySQL databases, the system and DB users tied to each site) and centralises them. Two independent apps share one contract:
+StackCard (technical name `discover`: package `discover-agent`, config `discover`, `DISCOVER_*` variables, kept so existing installs keep working) inventories Ubuntu 22.04, 24.04 and 26.04 servers (name, IPs, Apache sites, MySQL databases, the system and DB users tied to each site) and centralises them. Two independent apps share one contract:
 
 - `agent/` — Python agent, **standard library only**, Python ≥ 3.10 (Ubuntu 22.04, 24.04 and 26.04 ship 3.10, 3.12 and 3.14; CI runs all three) (runs as root on servers; no pip installs). Push-only: no listening port, never accepts commands.
 - `central/` — Laravel 13 + Filament 5 + Sanctum (PHP ≥ 8.4), receives snapshots and shows them.

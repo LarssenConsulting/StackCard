@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installe ou met à jour l'agent Discover, puis enrôle ce serveur auprès du central.
+# Installe ou met à jour l'agent StackCard, puis enrôle ce serveur auprès du central.
 #
 #   curl -fsSL https://github.com/LarssenConsulting/StackCard/releases/latest/download/install.sh | sudo sh
 #
@@ -108,7 +108,7 @@ choose_host() {
         return 0
     fi
     while :; do
-        ask "Adresse (FQDN) du central Discover${1:+ [$1]} : "
+        ask "Adresse (FQDN) du central StackCard${1:+ [$1]} : "
         host=$(to_host "${REPLY:-$1}")
         if [ -z "$host" ]; then
             say "Adresse invalide : indiquez par exemple sentinel.example.fr"

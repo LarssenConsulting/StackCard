@@ -1,4 +1,4 @@
-# Installer l'agent Discover
+# Installer l'agent StackCard
 
 L'agent tourne sur chaque serveur Ubuntu 22.04, 24.04 ou 26.04. Il est en Python (bibliothèque standard
 uniquement), lit la configuration du serveur **sans rien modifier**, et envoie un inventaire au

@@ -1,4 +1,4 @@
-# Installer le central Discover
+# Installer le central StackCard
 
 Le central est une application Laravel 13 + Filament 5. Il reçoit les inventaires des agents
 (`POST /api/v1/inventory`) et les affiche dans une interface d'administration (`/admin`).

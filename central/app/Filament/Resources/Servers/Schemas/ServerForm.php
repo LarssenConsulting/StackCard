@@ -20,7 +20,7 @@ class ServerForm
             ->components([
                 TextInput::make('name')
                     ->label('Nom')
-                    ->helperText('Nom d’affichage dans Discover (le hostname réel est remonté par l’agent).')
+                    ->helperText('Nom d’affichage dans StackCard (le hostname réel est remonté par l’agent).')
                     ->required()
                     ->maxLength(255)
                     ->live(onBlur: true)

@@ -151,7 +151,7 @@ def cmd_status(args, paths):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(prog="discover-agent", description="Inventaire serveur Discover")
+    parser = argparse.ArgumentParser(prog="discover-agent", description="Inventaire serveur StackCard")
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command", required=True)
 
