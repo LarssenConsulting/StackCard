@@ -13,6 +13,8 @@ import tempfile
 from dataclasses import dataclass
 
 DEFAULT_WEEKLY_INTERVAL_DAYS = 7
+DEFAULT_APT_REFRESH_HOURS = 6
+MAX_APT_REFRESH_HOURS = 8760  # one year: a huge value must not overflow the date arithmetic
 
 
 @dataclass
@@ -40,6 +42,7 @@ class Config:
     ca_file: str | None = None
     pin_sha256: str | None = None
     weekly_interval_days: int = DEFAULT_WEEKLY_INTERVAL_DAYS
+    apt_refresh_hours: int = DEFAULT_APT_REFRESH_HOURS
 
 
 def default_paths():
@@ -61,11 +64,34 @@ def save(paths, cfg):
         "ca_file": cfg.ca_file or "",
         "pin_sha256": cfg.pin_sha256 or "",
     }
-    parser["collect"] = {"weekly_interval_days": str(cfg.weekly_interval_days)}
+    parser["collect"] = {
+        "weekly_interval_days": str(cfg.weekly_interval_days),
+        "apt_refresh_hours": str(cfg.apt_refresh_hours),
+    }
     buffer = io.StringIO()
     parser.write(buffer)
     _write_private(paths.conf, buffer.getvalue())
     _write_private(paths.credentials, cfg.token + "\n")
+
+
+def _parse_apt_refresh_hours(parser):
+    try:
+        hours = parser.getint("collect", "apt_refresh_hours", fallback=DEFAULT_APT_REFRESH_HOURS)
+    except ValueError:
+        return DEFAULT_APT_REFRESH_HOURS
+    if hours < 1:
+        return DEFAULT_APT_REFRESH_HOURS
+    return min(hours, MAX_APT_REFRESH_HOURS)
+
+
+def read_apt_refresh_hours(paths):
+    """Read only [collect] apt_refresh_hours, even when not enrolled."""
+    parser = configparser.ConfigParser()
+    try:
+        parser.read(paths.conf)
+        return _parse_apt_refresh_hours(parser)
+    except (OSError, configparser.Error, UnicodeError):
+        return DEFAULT_APT_REFRESH_HOURS
 
 
 def load(paths):
@@ -87,6 +113,7 @@ def load(paths):
         ca_file=section.get("ca_file") or None,
         pin_sha256=section.get("pin_sha256") or None,
         weekly_interval_days=interval if interval >= 1 else DEFAULT_WEEKLY_INTERVAL_DAYS,
+        apt_refresh_hours=_parse_apt_refresh_hours(parser),
     )
 
 

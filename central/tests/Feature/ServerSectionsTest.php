@@ -73,7 +73,7 @@ it('keeps sections out of the snapshot payload', function () {
     $this->withToken($token)->postJson('/api/v1/inventory', snapshotFixture())->assertOk();
 
     expect(Snapshot::sole()->payload)->not->toHaveKey('sections')
-        ->and($server->sections()->count())->toBe(14);
+        ->and($server->sections()->count())->toBe(15);
 });
 
 it('drops an unknown section name', function () {
@@ -223,7 +223,7 @@ it('rolls back sections with the snapshot', function () {
 it('deletes sections with the server', function () {
     [$server, $token] = enrolledServer();
     $this->withToken($token)->postJson('/api/v1/inventory', snapshotFixture())->assertOk();
-    expect(ServerSection::count())->toBe(14);
+    expect(ServerSection::count())->toBe(15);
 
     $server->delete();
 

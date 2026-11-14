@@ -6,6 +6,7 @@ use App\Models\DockerContainer;
 use App\Models\NodeApp;
 use App\Models\Server;
 use App\Models\ServerSection;
+use App\Models\ServerUpdate;
 use App\Models\Snapshot;
 use App\Models\SiteDomain;
 use Illuminate\Support\Arr;
@@ -84,6 +85,7 @@ class IngestSnapshot
         $this->storeFirewallRules($server, $snapshot['ufw']['rules'] ?? []);
         $this->storeMysql($server, $snapshot['mysql'] ?? null);
         $this->storeSections($server, $sections);
+        $this->storeUpdates($server, $sections);
 
         return $record;
     }
@@ -131,6 +133,107 @@ class IngestSnapshot
                 'last_seen_at' => now(),
             ]);
         }
+    }
+
+    /**
+     * Derive server_updates and the summary columns from the apt_updates and kernel sections. A section
+     * in error (or without a list) keeps the previous rows and counts and only records why. A lone
+     * `apt_update` source error is not a failure: the age of the cache shows it.
+     */
+    private function storeUpdates(Server $server, array $sections): void
+    {
+        $apt = $sections['apt_updates'] ?? null;
+        if ($apt !== null && ($apt['error'] ?? null) !== 'skipped_not_due') {
+            $error = $apt['error'] ?? null;
+            $data = $error === null ? ($apt['data'] ?? null) : null;
+            $upgrades = is_array($data) ? ($data['upgrades'] ?? null) : null;
+
+            if ($error === null && is_array($upgrades)) {
+                $rows = $this->cleanUpgrades($upgrades);
+                $server->updates()->delete();
+                $now = now();
+                foreach (array_chunk($rows, 500) as $chunk) {
+                    ServerUpdate::insert(array_map(fn (array $row) => array_merge($row, [
+                        'server_id' => $server->id,
+                        'origins' => json_encode($row['origins']),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]), $chunk));
+                }
+                $cache = $data['cache_updated_at'] ?? null;
+                try {
+                    $cacheAt = is_string($cache) && $cache !== '' ? Carbon::parse($cache) : null;
+                } catch (\Throwable) {
+                    $cacheAt = null;
+                }
+                $server->forceFill([
+                    'updates_count' => count($rows),
+                    'security_updates_count' => count(array_filter($rows, fn (array $row) => $row['security'])),
+                    'apt_cache_updated_at' => $cacheAt,
+                    'updates_received_at' => now(),
+                    // Lines the agent could not read: the list may be incomplete, never show « à jour ».
+                    'updates_error' => is_string($unparsed = $apt['source_errors']['upgrades_unparsed'] ?? null) && $unparsed !== ''
+                        ? mb_substr($unparsed, 0, 4000) : null,
+                ]);
+            } else {
+                $sourceError = $apt['source_errors']['upgrades'] ?? null;
+                $message = $error ?? (is_string($sourceError) && $sourceError !== '' ? $sourceError : 'upgrades');
+                $server->forceFill(['updates_error' => mb_substr($message, 0, 4000)]);
+            }
+        }
+
+        $kernel = $sections['kernel'] ?? null;
+        if ($kernel !== null && ($kernel['error'] ?? null) === null && is_array($kernel['data'] ?? null)) {
+            $reboot = $kernel['data']['reboot_required'] ?? null;
+            $server->forceFill(['reboot_required' => is_bool($reboot) ? $reboot : null]);
+        }
+
+        $server->save();
+    }
+
+    /**
+     * The agent's list is opaque data: keep only well-formed entries, trimmed to the column sizes.
+     * Deduplicated on the trimmed (package, arch), like the unique index; the last entry wins.
+     *
+     * @return array<string, array{package: string, arch: string, installed_version: ?string, candidate_version: string, security: bool, origins: array<int, string>}>
+     */
+    private function cleanUpgrades(array $upgrades): array
+    {
+        $text = fn (mixed $value, int $max): ?string => is_string($value) && trim($value) !== '' ? mb_substr(trim($value), 0, $max) : null;
+
+        $rows = [];
+        foreach ($upgrades as $upgrade) {
+            if (! is_array($upgrade)) {
+                continue;
+            }
+            $package = $text($upgrade['package'] ?? null, 255);
+            $candidate = $text($upgrade['candidate'] ?? null, 255);
+            if ($package === null || $candidate === null) {
+                continue;
+            }
+            $arch = $text($upgrade['arch'] ?? null, 32) ?? '';
+            $origins = [];
+            if (is_array($upgrade['origins'] ?? null)) {
+                foreach ($upgrade['origins'] as $origin) {
+                    if (($origin = $text($origin, 255)) !== null) {
+                        $origins[] = $origin;
+                    }
+                    if (count($origins) >= 50) {
+                        break;
+                    }
+                }
+            }
+            $rows[$package."\0".$arch] = [
+                'package' => $package,
+                'arch' => $arch,
+                'installed_version' => $text($upgrade['installed'] ?? null, 255),
+                'candidate_version' => $candidate,
+                'security' => ($upgrade['security'] ?? false) === true,
+                'origins' => $origins,
+            ];
+        }
+
+        return array_values($rows);
     }
 
     /** JSON with object keys sorted at every level, so key order does not matter. */

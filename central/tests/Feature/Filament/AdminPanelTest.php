@@ -290,7 +290,7 @@ it('shows on a Node site the app that serves it', function () {
         ->assertSee('api 1.4.0')
         ->assertSee('Node 20.18.0')
         ->assertSee('port 3000')
-        ->assertSee('relation=1', escape: false);
+        ->assertSee('relation=2', escape: false);
 });
 
 it('lists the Docker containers of a server, with the sites that use them', function () {
@@ -313,7 +313,7 @@ it('shows on a Docker site the container that serves it', function () {
         ->assertSee('shop-web-1')
         ->assertSee('nginx:1.27')
         ->assertSee('port 8080')
-        ->assertSee('relation=2', escape: false);
+        ->assertSee('relation=3', escape: false);
 });
 
 it('shows the Docker version of a server', function () {

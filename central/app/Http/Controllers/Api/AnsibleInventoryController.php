@@ -27,6 +27,8 @@ class AnsibleInventoryController extends Controller
         foreach ($servers as $server) {
             $slug = (string) $server->slug;
             $stale = $server->isStale();
+            $updatesState = $server->updatesState();
+            $known = $updatesState !== 'unknown';
 
             $vars = ['ansible_host' => $server->trustedAddress()];
             if ($server->connect_port) {
@@ -40,6 +42,10 @@ class AnsibleInventoryController extends Controller
                 'stackcard_os' => self::inert($server->os),
                 'stackcard_stale' => $stale,
                 'stackcard_last_seen_at' => $server->last_seen_at,
+                'stackcard_updates_state' => $updatesState,
+                'stackcard_updates_pending' => $known ? $server->updates_count : null,
+                'stackcard_security_updates_pending' => $known ? $server->security_updates_count : null,
+                'stackcard_reboot_required' => $server->reboot_required,
             ];
 
             if (preg_match('/Ubuntu (\d{2})\.(\d{2})/', (string) $server->os, $m)) {
@@ -52,6 +58,20 @@ class AnsibleInventoryController extends Controller
             }
             if ($stale) {
                 $groups['stale'][] = $slug;
+            }
+            // Last known data whatever the freshness (better one server too many than one forgotten);
+            // a server that never reported its updates (unknown) is in neither of these two groups.
+            if ($known) {
+                if ($server->updates_count > 0) {
+                    $groups['updates_pending'][] = $slug;
+                }
+                if ($server->security_updates_count > 0) {
+                    $groups['security_updates'][] = $slug;
+                }
+            }
+            // Reboot comes from the kernel section (older agents send it too), not from the updates state.
+            if ($server->reboot_required) {
+                $groups['reboot_required'][] = $slug;
             }
         }
 

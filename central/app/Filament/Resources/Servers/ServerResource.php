@@ -14,6 +14,7 @@ use App\Filament\Resources\Servers\RelationManagers\NodeAppsRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SectionsRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SitesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\SnapshotsRelationManager;
+use App\Filament\Resources\Servers\RelationManagers\UpdatesRelationManager;
 use App\Filament\Resources\Servers\Schemas\ServerForm;
 use App\Filament\Resources\Servers\Schemas\ServerInfolist;
 use App\Filament\Resources\Servers\Tables\ServersTable;
@@ -57,6 +58,7 @@ class ServerResource extends Resource
     {
         return [
             SitesRelationManager::class,
+            UpdatesRelationManager::class,
             NodeAppsRelationManager::class,
             DockerContainersRelationManager::class,
             FirewallRulesRelationManager::class,

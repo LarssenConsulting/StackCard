@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\DomainReadController;
 use App\Http\Controllers\Api\EnrollController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\ServerReadController;
+use App\Http\Controllers\Api\UpdateReadController;
 use App\Http\Middleware\EnsureApiClientIsAllowed;
 use App\Http\Middleware\LimitRequestBody;
 use App\Models\ApiClient;
@@ -34,6 +35,9 @@ Route::prefix('v1')->group(function () {
         Route::get('servers/{server}/sections/{section}', 'section')
             ->where('server', '[a-z0-9-]+')
             ->whereIn('section', ServerSection::NAMES);
+        Route::get('servers/{server}/updates', [UpdateReadController::class, 'server'])->where('server', '[a-z0-9-]+');
+        Route::get('updates', [UpdateReadController::class, 'fleet']);
+        Route::get('packages', [UpdateReadController::class, 'package']);
         Route::get('domains', [DomainReadController::class, 'index']);
         Route::get('inventory/ansible', AnsibleInventoryController::class);
     });

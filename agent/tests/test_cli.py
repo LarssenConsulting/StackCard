@@ -83,6 +83,15 @@ class CliTest(unittest.TestCase):
         self.assertEqual(second.kwargs["token"], "7|secret-token")
         self.assertNotIn("secret-token", out)
 
+    def test_reenroll_keeps_the_previous_collect_settings(self):
+        os.makedirs(self.paths.etc_dir, exist_ok=True)
+        config.save(self.paths, config.Config(
+            url="https://old.example.com", token="old", weekly_interval_days=3, apt_refresh_hours=2))
+        self.enroll()
+        cfg = config.load(self.paths)
+        self.assertEqual(cfg.weekly_interval_days, 3)
+        self.assertEqual(cfg.apt_refresh_hours, 2)
+
     def test_enroll_rejected_keeps_nothing(self):
         self.post.side_effect = [(410, {"message": "Jeton invalide ou expiré"})]
         code, _, err = self.run_cli("enroll", "--url", "https://c.example.com", "--token", "bad")

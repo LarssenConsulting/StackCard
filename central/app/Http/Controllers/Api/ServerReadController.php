@@ -88,6 +88,8 @@ class ServerReadController extends Controller
 
     private static function summary(Server $server): array
     {
+        $updatesState = $server->updatesState();
+
         return [
             ...$server->only([
                 'id', 'name', 'slug', 'hostname', 'fqdn', 'status', 'primary_ip', 'os', 'kernel', 'virtualization',
@@ -95,6 +97,11 @@ class ServerReadController extends Controller
             ]),
             'slug_locked' => $server->isSlugLocked(),
             ...$server->only(['connect_address', 'connect_port', 'approved_ip', 'ansible_excluded']),
+            'updates_state' => $updatesState,
+            'updates_pending' => $updatesState === 'unknown' ? null : $server->updates_count,
+            'security_updates_pending' => $updatesState === 'unknown' ? null : $server->security_updates_count,
+            'reboot_required' => $server->reboot_required,
+            'apt_cache_updated_at' => $server->apt_cache_updated_at,
             'stale' => $server->last_seen_at === null || $server->last_seen_at->lt(now()->subHours(Server::STALE_AFTER_HOURS)),
         ];
     }

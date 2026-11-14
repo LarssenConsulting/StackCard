@@ -15,7 +15,7 @@ from discover_agent.redact import redact
 
 # Order of the spec; also the order of the envelopes sent to the central.
 SECTION_NAMES = (
-    "packages", "apt_sources", "kernel", "restart_needed", "kernel_surface", "network", "php",
+    "packages", "apt_sources", "apt_updates", "kernel", "restart_needed", "kernel_surface", "network", "php",
     "apache", "site_dependencies", "node_apps", "docker", "persistence", "integrity", "code_patterns",
 )
 # Level 3: slow, so collected on their own schedule and given a longer timeout.
@@ -23,6 +23,11 @@ WEEKLY = ("integrity", "code_patterns")
 
 TIMEOUT = 30
 TIMEOUT_WEEKLY = 300
+# `apt_updates` runs three commands in turn; its budget covers all of them plus a margin.
+REFRESH_TIMEOUT = 120
+SIMULATION_TIMEOUT = 60
+SHOWHOLD_TIMEOUT = 15
+TIMEOUT_APT = REFRESH_TIMEOUT + SIMULATION_TIMEOUT + SHOWHOLD_TIMEOUT + 15
 SECTION_MAX = 4 * 1024 * 1024
 TOTAL_MAX = 16 * 1024 * 1024
 RETRY_AFTER_FAILURE_DAYS = 1
@@ -72,6 +77,8 @@ def canonical_sha256(data):
 
 
 def timeout_for(name):
+    if name == "apt_updates":
+        return TIMEOUT_APT
     return TIMEOUT_WEEKLY if name in WEEKLY else TIMEOUT
 
 

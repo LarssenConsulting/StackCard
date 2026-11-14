@@ -138,8 +138,8 @@ class EnvelopeTest(unittest.TestCase):
         registry = {"docker": ok(), "packages": ok()}
         self.assertEqual(list(sections.run_all(set(), registry, None, now)), ["packages", "docker"])
 
-    def test_section_names_are_the_fourteen_of_the_spec(self):
-        self.assertEqual(len(sections.SECTION_NAMES), 14)
+    def test_section_names_are_the_fifteen_of_the_spec(self):
+        self.assertEqual(len(sections.SECTION_NAMES), 15)
         self.assertEqual(sections.SECTION_NAMES[0], "packages")
         self.assertEqual(sections.SECTION_NAMES[-2:], sections.WEEKLY)
 

@@ -228,6 +228,34 @@
         }
       }
     },
+    "apt_updates": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "3c1e6f0b7a9d4e52b8a1c0f4d7e92a65b3c8d1f0e4a7b6c5d2e9f8a1b0c3d4e5",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "cache_updated_at": "2026-11-01T07:00:00Z",
+        "upgrades": [
+          {
+            "package": "libssl3t64",
+            "arch": "amd64",
+            "installed": "3.0.13-0ubuntu3.4",
+            "candidate": "3.0.13-0ubuntu3.5",
+            "origins": ["noble-security"],
+            "security": true
+          },
+          {
+            "package": "tzdata",
+            "arch": "all",
+            "installed": "2024a-3ubuntu1.1",
+            "candidate": "2024b-0ubuntu0.24.04.1",
+            "origins": ["noble-updates"],
+            "security": false
+          }
+        ],
+        "held": ["php8.3-fpm"]
+      }
+    },
     "kernel": {
       "collected_at": "2026-11-01T08:00:00Z",
       "sha256": "29566ce65219e0c9ca6fb8360d70d1d4febb7e8f4414692467f87a80fd530ca1",

@@ -22,10 +22,58 @@ Le central expose un inventaire dynamique, `GET /api/v1/inventory/ansible`, et l
   machine.
 - Variables d'hôte : `ansible_host`, `ansible_port` (seulement si un port est défini), `stackcard_id`,
   `stackcard_name`, `stackcard_hostname`, `stackcard_fqdn`, `stackcard_os`, `stackcard_stale`,
-  `stackcard_last_seen_at` (ISO 8601, UTC).
+  `stackcard_last_seen_at` (ISO 8601, UTC), `stackcard_updates_state` (`ok`, `stale` ou `unknown`),
+  `stackcard_updates_pending`, `stackcard_security_updates_pending` (nombres de mises à jour APT en attente) et
+  `stackcard_reboot_required` (booléen, issu de la section `kernel`, indépendant de l'état des mises à jour). Les deux
+  compteurs valent `null` quand l'état est `unknown` ; `stackcard_reboot_required` vaut `null` seulement si
+  l'agent ne l'a jamais communiqué.
 - Groupes, émis seulement s'ils ne sont pas vides : `ubuntu_22_04`, `ubuntu_24_04`, `ubuntu_26_04` (selon l'OS),
   `apache`, `mysql`, `docker` (service détecté) et `stale` (serveur muet depuis plus de 3 h : ses données et son
   adresse peuvent être périmées). Le groupe `all` liste tous les hôtes et ces groupes.
+- Groupes de mises à jour APT, émis seulement s'ils ne sont pas vides : `updates_pending` (au moins une mise à
+  jour en attente), `security_updates` (au moins une mise à jour de sécurité) et `reboot_required` (redémarrage
+  requis ; ce groupe ne dépend pas de l'état des mises à jour : un agent plus ancien l'alimente aussi). Ils reposent sur les **dernières données connues**, que l'état soit `ok` ou `stale` (cache APT de plus
+  de 24 h ou dernier envoi en erreur) : mieux vaut viser un serveur de trop qu'en oublier un. Un serveur `unknown`
+  (agent antérieur à la 0.6, aucune donnée valide reçue) n'est dans ni `updates_pending` ni `security_updates`.
+
+## Mises à jour APT : cibler les serveurs et régler l'agent
+
+Depuis l'agent 0.6, chaque serveur remonte ses mises à jour APT en attente (voir `install-agent.md`,
+« Mises à jour APT »). StackCard n'applique rien : c'est Ansible qui le fait, en ciblant les groupes ci-dessus.
+
+```yaml
+# Mettre à jour les serveurs qui ont des correctifs de sécurité (upgrade: dist applique toutes les mises à jour)
+- hosts: security_updates
+  become: true
+  tasks:
+    - name: Mettre à jour les paquets
+      ansible.builtin.apt:
+        upgrade: dist
+        update_cache: true
+        # L'agent peut rafraîchir le cache pendant 120 s au plus : attendre le verrou plutôt qu'échouer.
+        update_cache_retries: 13
+        update_cache_retry_max_delay: 10
+        lock_timeout: 120
+```
+
+L'agent rafraîchit lui-même le cache APT (`apt-get update`), seulement quand le cache **et** sa dernière
+tentative datent de plus de `apt_refresh_hours` heures. Ce réglage local est dans `/etc/discover-agent/agent.conf`,
+section `[collect]` : défaut **6**, minimum **1** (une valeur absente, non entière ou inférieure à 1 vaut 6). Il est
+relu à chaque passage, sans redémarrage. Ce n'est pas un ordre du central : par exemple, pendant une crise, passez
+à 1 puis revenez à 6.
+
+```yaml
+- hosts: all
+  become: true
+  tasks:
+    - name: Rafraîchir le cache APT toutes les heures
+      community.general.ini_file:
+        path: /etc/discover-agent/agent.conf
+        section: collect
+        option: apt_refresh_hours
+        value: "1"
+        mode: "0600"
+```
 
 ## 1. Créer le client API
 

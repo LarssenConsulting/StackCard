@@ -13,7 +13,7 @@ class ServerSection extends Model
 {
     /** Same names and order as SECTION_NAMES in the agent (agent/discover_agent/sections/core.py). */
     public const NAMES = [
-        'packages', 'apt_sources', 'kernel', 'restart_needed', 'kernel_surface', 'network', 'php',
+        'packages', 'apt_sources', 'apt_updates', 'kernel', 'restart_needed', 'kernel_surface', 'network', 'php',
         'apache', 'site_dependencies', 'node_apps', 'docker', 'persistence', 'integrity', 'code_patterns',
     ];
 

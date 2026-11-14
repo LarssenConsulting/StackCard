@@ -8,6 +8,7 @@ from discover_agent.sections.core import (  # noqa: F401
     SECTION_MAX,
     SECTION_NAMES,
     TIMEOUT,
+    TIMEOUT_APT,
     TIMEOUT_WEEKLY,
     TOTAL_MAX,
     WEEKLY,
@@ -26,6 +27,7 @@ from discover_agent.sections.core import (  # noqa: F401
 from discover_agent.sections import (  # noqa: E402
     apache,
     apt_sources,
+    apt_updates,
     code_patterns,
     docker_images,
     integrity,
@@ -43,6 +45,7 @@ from discover_agent.sections import (  # noqa: E402
 REGISTRY.update(
     packages=packages.collect,
     apt_sources=apt_sources.collect,
+    apt_updates=apt_updates.collect,
     kernel=kernel.collect,
     restart_needed=restart_needed.collect,
     kernel_surface=kernel_surface.collect,

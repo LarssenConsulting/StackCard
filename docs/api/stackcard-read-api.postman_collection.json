@@ -203,6 +203,47 @@
           "response": []
         },
         {
+          "name": "apt_updates",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('apt_updates'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/apt_updates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "apt_updates"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "kernel",
           "event": [
             {
@@ -750,6 +791,154 @@
       ]
     },
     {
+      "name": "Mises à jour",
+      "item": [
+        {
+          "name": "Mises à jour d'un serveur",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('État connu', () => pm.expect(['unknown', 'stale', 'ok']).to.include(d.updates_state));",
+                  "pm.test('Liste de mises à jour', () => pm.expect(d.updates).to.be.an('array'));",
+                  "pm.test('Date de collecte et erreurs de source', () => { pm.expect(d).to.have.property('collected_at'); pm.expect(d).to.have.property('source_errors'); });",
+                  "pm.test('Pas de notes ni de machine_id', () => { pm.expect(pm.response.text()).to.not.include('machine_id'); pm.expect(pm.response.text()).to.not.include('\"notes\"'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/updates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "updates"
+              ]
+            },
+            "description": "Mises à jour en attente, paquets retenus et paquets qui réclament un redémarrage."
+          },
+          "response": []
+        },
+        {
+          "name": "Mises à jour de la flotte",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json().data;",
+                  "pm.test('Liste', () => pm.expect(rows).to.be.an('array'));",
+                  "pm.test('Entrées complètes', () => rows.forEach(r => pm.expect(r).to.have.keys('package', 'candidate_version', 'security', 'installed_versions', 'servers')));",
+                  "pm.test('Pas de notes ni de machine_id', () => { pm.expect(pm.response.text()).to.not.include('machine_id'); pm.expect(pm.response.text()).to.not.include('\"notes\"'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/updates?security=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "updates"
+              ],
+              "query": [
+                {
+                  "key": "security",
+                  "value": "1",
+                  "description": "1 pour ne garder que la sécurité"
+                },
+                {
+                  "key": "package",
+                  "value": "",
+                  "description": "Nom exact d'un paquet",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Une entrée par (paquet, version candidate). Les paramètres `security` et `package` sont facultatifs : désactivez-les pour tout lister."
+          },
+          "response": []
+        },
+        {
+          "name": "Où est ce paquet ?",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json().data;",
+                  "pm.test('Liste', () => pm.expect(rows).to.be.an('array'));",
+                  "pm.test('Champs attendus', () => rows.forEach(r => pm.expect(r).to.have.keys('slug', 'name', 'os', 'installed_version', 'candidate_version', 'security', 'updates_state', 'apt_cache_updated_at', 'packages_collected_at')));",
+                  "pm.test('Pas de notes ni de machine_id', () => { pm.expect(pm.response.text()).to.not.include('machine_id'); pm.expect(pm.response.text()).to.not.include('\"notes\"'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/packages?name=openssl",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "packages"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "openssl",
+                  "description": "Nom du paquet Debian"
+                }
+              ]
+            },
+            "description": "Serveurs qui ont le paquet, avec version installée et candidate (`null` si à jour). Seul `updates_state` à `ok` autorise à conclure qu'il est à jour."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Ansible",
       "item": [
         {
@@ -985,6 +1174,47 @@
                 "v1",
                 "servers",
                 "{{serverId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Nom de paquet invalide : 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/packages?name=Bad%20Name",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "packages"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "Bad%20Name"
+                }
               ]
             }
           },

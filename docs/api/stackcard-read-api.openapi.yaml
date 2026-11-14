@@ -55,6 +55,8 @@ tags:
     description: État détaillé d'un serveur, section par section
   - name: Domaines
     description: Noms de domaine servis par la flotte
+  - name: Mises à jour
+    description: Mises à jour APT en attente et versions de paquets installées
   - name: Ansible
     description: Inventaire dynamique pour Ansible / Semaphore UI
 paths:
@@ -122,6 +124,7 @@ paths:
         |---|---|
         | `packages` | Liste des paquets dpkg installés : `package`, `version`, `arch`, `source_package`, `source_version`, `status`, `installed_at`. |
         | `apt_sources` | `{sources, origins, pro}`. `sources` : `[{file, uri, suite, components}]`. `origins` : pour `php*`, `nodejs`, `apache2`, `libbrotli1`, `linux-image-*`, `docker-ce`, `[{package, version, origins: [{uri, suite}]}]`. `pro` : `{attached, services: [{name, status}]}`, l'état d'Ubuntu Pro. |
+        | `apt_updates` | `{cache_updated_at, upgrades, held}`. `cache_updated_at` : date du dernier `apt-get update` réussi (`null` si inconnue). `upgrades` : mises à jour en attente `[{package, arch, installed, candidate, origins, security}]` (`installed` vaut `null` pour un nouveau paquet, `origins` liste les suites d'origine, `security` est vrai pour une suite de sécurité), `null` si non lu. `held` : paquets en `apt-mark hold`, `null` si non lu. Une entrée `source_errors.apt_update` (`locked`, `timeout` ou message) signale un `apt-get update` non effectué : lire alors `cache_updated_at`. |
         | `kernel` | `{running, installed, reboot_required, reboot_required_pkgs, boot_time, livepatch}`. `livepatch` : `{kernel, running, check_state, patch_state, version, fixes: [{name, patched}]}`. |
         | `restart_needed` | `{needrestart, masters}`. `needrestart` : `{kernel_current, kernel_expected, kernel_status, services}`. `masters` : processus maîtres `php-fpm*` et `apache2`, `[{comm, pid, started_at}]`. |
         | `kernel_surface` | `{sysctl, modules, modprobe}`. `sysctl` : `{clé: valeur}` pour une liste de clés sensibles, `null` pour un sysctl inexistant. `modules` : modules chargés. `modprobe` : lignes `blacklist` et `install`. |
@@ -199,6 +202,124 @@ paths:
                 $ref: '#/components/schemas/Error'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /api/v1/servers/{server}/updates:
+    get:
+      tags: [Mises à jour]
+      operationId: getServerUpdates
+      summary: Mises à jour APT en attente d'un serveur
+      description: |
+        Les mises à jour en attente (triées par paquet), les paquets retenus (`held`) et les paquets qui
+        réclament un redémarrage. `updates_state` dit si la liste est fiable : `unknown` (aucune donnée reçue),
+        `stale` (cache APT de plus de 24 h ou à une date future, ou dernière collecte en erreur : les lignes sont celles de la dernière
+        collecte réussie), `ok`. Un `null` signifie « non lu ».
+      parameters:
+        - $ref: '#/components/parameters/Server'
+      responses:
+        '200':
+          description: Les mises à jour du serveur
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ServerUpdates'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/updates:
+    get:
+      tags: [Mises à jour]
+      operationId: listFleetUpdates
+      summary: Mises à jour en attente de la flotte
+      description: |
+        Une entrée par couple (paquet, version candidate), triée par paquet, avec les serveurs concernés.
+        Les serveurs révoqués sont exclus. Chaque serveur porte son `updates_state` : une liste `stale` peut
+        être périmée. La réponse n'est pas paginée.
+      parameters:
+        - name: security
+          in: query
+          required: false
+          description: "`1` pour ne garder que les mises à jour de sécurité."
+          schema:
+            type: string
+            enum: ['0', '1', 'true', 'false']
+        - name: package
+          in: query
+          required: false
+          description: Nom exact d'un paquet.
+          schema:
+            type: string
+            example: libssl3t64
+      responses:
+        '200':
+          description: Les mises à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FleetUpdate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/packages:
+    get:
+      tags: [Mises à jour]
+      operationId: findPackage
+      summary: Où est installé un paquet, et dans quelle version
+      description: |
+        Pour chaque serveur non révoqué qui a le paquet : la version installée (celle de la mise à jour en
+        attente, sinon celle de la dernière section `packages`) et, si une mise à jour existe, la version
+        candidate. `candidate_version` et `security` valent `null` quand le paquet n'a pas de mise à jour en
+        attente : seul `updates_state` à `ok` autorise à conclure qu'il est à jour. Un serveur sans ce paquet
+        est absent de la réponse, mais l'absence peut aussi signifier « paquets non lus » (aucune section `packages`
+        valide reçue de ce serveur) : voir `packages_collected_at` des autres serveurs et `/servers/{server}/sections/packages`.
+      parameters:
+        - name: name
+          in: query
+          required: true
+          description: Nom du paquet Debian (minuscules, chiffres, `.`, `+`, `-`).
+          schema:
+            type: string
+            pattern: '^[a-z0-9][a-z0-9.+-]+$'
+            example: openssl
+      responses:
+        '200':
+          description: Les serveurs qui ont ce paquet
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PackageLocation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Invalid'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/domains:
     get:
       tags: [Domaines]
@@ -245,7 +366,9 @@ paths:
         Format `--list` d'un inventaire dynamique Ansible. Les hôtes sont nommés par leur slug StackCard ;
         seuls les serveurs actifs ayant une adresse (manuelle, sinon celle remontée par l'agent) sont listés.
         `ansible_port` n'est présent que si un port de connexion est défini. Groupes dérivés, émis seulement
-        s'ils ne sont pas vides : `ubuntu_XX_YY`, `apache`, `mysql`, `docker`, `stale` (serveur muet depuis plus de 3 h).
+        s'ils ne sont pas vides : `ubuntu_XX_YY`, `apache`, `mysql`, `docker`, `stale` (serveur muet depuis plus de 3 h),
+        `updates_pending`, `security_updates` et `reboot_required` (mises à jour APT, d'après les dernières données connues
+        même périmées ; un serveur dont `stackcard_updates_state` vaut `unknown` n'est dans aucun de ces trois groupes).
         Le groupe `all` liste tous les hôtes et les groupes dérivés. Le script `docs/ansible/stackcard_inventory.py` s'en sert.
       responses:
         '200':
@@ -276,6 +399,10 @@ paths:
                             stackcard_os: {type: string, nullable: true, example: Ubuntu 24.04.1 LTS}
                             stackcard_stale: {type: boolean}
                             stackcard_last_seen_at: {type: string, format: date-time, nullable: true, description: ISO 8601, UTC}
+                            stackcard_updates_state: {type: string, enum: [ok, stale, unknown]}
+                            stackcard_updates_pending: {type: integer, nullable: true, description: Mises à jour APT en attente ; null si `unknown`.}
+                            stackcard_security_updates_pending: {type: integer, nullable: true, description: Dont mises à jour de sécurité ; null si `unknown`.}
+                            stackcard_reboot_required: {type: boolean, nullable: true, description: Redémarrage requis ; null si `unknown`.}
                   all:
                     type: object
                     required: [hosts, children]
@@ -288,7 +415,7 @@ paths:
                         items: {type: string}
                 additionalProperties:
                   type: object
-                  description: Un groupe dérivé (`apache`, `docker`, `mysql`, `stale`, `ubuntu_XX_YY`).
+                  description: Un groupe dérivé (`apache`, `docker`, `mysql`, `reboot_required`, `security_updates`, `stale`, `ubuntu_XX_YY`, `updates_pending`).
                   properties:
                     hosts:
                       type: array
@@ -316,6 +443,12 @@ components:
         pattern: '^[a-z0-9-]+$'
         example: web01
   responses:
+    Invalid:
+      description: Paramètre manquant ou invalide.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     Unauthorized:
       description: Jeton absent, invalide, expiré ou révoqué.
       content:
@@ -357,6 +490,7 @@ components:
       enum:
         - packages
         - apt_sources
+        - apt_updates
         - kernel
         - restart_needed
         - kernel_surface
@@ -431,9 +565,148 @@ components:
                 description: CMS et frameworks détectés
                 items:
                   type: object
+    ServerUpdates:
+      type: object
+      required: [slug, updates_state, apt_cache_updated_at, updates_received_at, updates_error, reboot_required, reboot_required_packages, held, collected_at, source_errors, updates]
+      properties:
+        slug:
+          type: string
+          nullable: true
+        updates_state:
+          type: string
+          enum: [unknown, stale, ok]
+        apt_cache_updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        updates_received_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date de la dernière collecte réussie.
+        updates_error:
+          type: string
+          nullable: true
+          description: Erreur de la dernière collecte, le cas échéant (les lignes restent celles de la dernière réussie).
+        reboot_required:
+          type: boolean
+          nullable: true
+        reboot_required_packages:
+          type: array
+          nullable: true
+          description: Paquets qui réclament le redémarrage (dernière section `kernel`). `null` si non lu.
+          items:
+            type: string
+        held:
+          type: array
+          nullable: true
+          description: Paquets retenus (`apt-mark hold`). `null` si non lu.
+          items:
+            type: string
+        collected_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date de collecte de la dernière section `apt_updates` valide. `null` si aucune.
+        source_errors:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: string
+          description: Erreurs de sources de cette section (par exemple `apt_update` valant `locked` quand `apt-get update` n'a pas pu tourner). `null` si aucune section valide.
+        updates:
+          type: array
+          items:
+            type: object
+            required: [package, arch, installed_version, candidate_version, security, origins]
+            properties:
+              package:
+                type: string
+              arch:
+                type: string
+                nullable: true
+              installed_version:
+                type: string
+                nullable: true
+              candidate_version:
+                type: string
+              security:
+                type: boolean
+              origins:
+                type: array
+                items:
+                  type: string
+                example: [noble-security]
+    FleetUpdate:
+      type: object
+      required: [package, candidate_version, security, installed_versions, servers]
+      properties:
+        package:
+          type: string
+        candidate_version:
+          type: string
+        security:
+          type: boolean
+        installed_versions:
+          type: array
+          description: Versions installées distinctes (triées) sur les serveurs concernés.
+          items:
+            type: string
+        servers:
+          type: array
+          items:
+            type: object
+            required: [slug, name, installed_version, updates_state]
+            properties:
+              slug:
+                type: string
+                nullable: true
+              name:
+                type: string
+              installed_version:
+                type: string
+                nullable: true
+              updates_state:
+                type: string
+                enum: [unknown, stale, ok]
+    PackageLocation:
+      type: object
+      required: [slug, name, os, installed_version, candidate_version, security, updates_state, apt_cache_updated_at, packages_collected_at]
+      properties:
+        slug:
+          type: string
+          nullable: true
+        name:
+          type: string
+        os:
+          type: string
+          nullable: true
+        installed_version:
+          type: string
+          nullable: true
+        candidate_version:
+          type: string
+          nullable: true
+          description: "`null` : pas de mise à jour en attente connue pour ce paquet."
+        security:
+          type: boolean
+          nullable: true
+          description: "`null` quand le paquet n'a pas de mise à jour en attente."
+        updates_state:
+          type: string
+          enum: [unknown, stale, ok]
+        apt_cache_updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        packages_collected_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date de la dernière section `packages` reçue ; `null` si aucune.
     ServerSummary:
       type: object
-      required: [id, name, slug, slug_locked, status, stale]
+      required: [id, name, slug, slug_locked, status, updates_state, updates_pending, security_updates_pending, reboot_required, apt_cache_updated_at, stale]
       properties:
         id:
           type: integer
@@ -506,6 +779,29 @@ components:
           format: date-time
           nullable: true
           description: Date du dernier envoi de l'agent
+        updates_state:
+          type: string
+          enum: [unknown, stale, ok]
+          description: >-
+            `unknown` : aucune donnée de mises à jour reçue. `stale` : cache APT de plus de 48 h ou dernière
+            collecte en erreur. `ok` : données fraîches.
+        updates_pending:
+          type: integer
+          nullable: true
+          description: Nombre de mises à jour en attente. `null` quand `updates_state` vaut `unknown`.
+        security_updates_pending:
+          type: integer
+          nullable: true
+          description: Dont mises à jour de sécurité. `null` quand `updates_state` vaut `unknown`.
+        reboot_required:
+          type: boolean
+          nullable: true
+          description: Vrai si le serveur réclame un redémarrage ; `null` si non lu.
+        apt_cache_updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date de la dernière actualisation de l'index APT du serveur.
         stale:
           type: boolean
           description: Vrai si le serveur est muet depuis plus de 3 h ou n'a jamais envoyé.

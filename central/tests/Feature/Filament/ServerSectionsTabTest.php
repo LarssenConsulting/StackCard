@@ -57,7 +57,7 @@ it('lists sections never received', function () {
     addSection($this->server, 'packages');
 
     sectionsTab($this->server)
-        ->assertSee('Jamais reçues : apt_sources, kernel')
+        ->assertSee('Jamais reçues : apt_sources, apt_updates, kernel')
         ->assertDontSee('Jamais reçues : packages');
 });
 

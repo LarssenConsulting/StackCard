@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\DomainReadController;
 use App\Http\Controllers\Api\ServerReadController;
+use App\Http\Controllers\Api\UpdateReadController;
 use App\Models\ServerSection;
 use Illuminate\Support\Facades\Route;
 
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 function readApiUris(): array
 {
     return collect(Route::getRoutes()->getRoutes())
-        ->filter(fn ($route) => collect([ServerReadController::class, DomainReadController::class, 'App\\Http\\Controllers\\Api\\AnsibleInventoryController'])
+        ->filter(fn ($route) => collect([ServerReadController::class, DomainReadController::class, UpdateReadController::class, 'App\\Http\\Controllers\\Api\\AnsibleInventoryController'])
             ->contains(fn (string $controller) => str_starts_with((string) $route->getActionName(), $controller)))
         ->map(fn ($route) => '/'.$route->uri())
         ->sort()->values()->all();

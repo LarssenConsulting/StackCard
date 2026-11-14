@@ -9,6 +9,8 @@ import json
 import os
 import struct
 import tempfile
+import time
+import types
 import unittest
 from datetime import datetime
 from functools import partial
@@ -19,6 +21,7 @@ from discover_agent.sections import (
     SECTION_NAMES,
     apache,
     apt_sources,
+    apt_updates,
     code_patterns,
     docker_images,
     integrity,
@@ -232,6 +235,11 @@ def registry(host, **extra):
         "apt_sources": partial(
             apt_sources.collect, runner=host.runner, reader=host.reader,
             listdir=host.listdir,
+        ),
+        # Nothing to upgrade, nothing held, fresh package lists: no `apt-get update` is run.
+        "apt_updates": partial(
+            apt_updates.collect, runner=lambda cmd, **kw: "", run_full=None, refresh_hours=6,
+            stat=lambda path: types.SimpleNamespace(st_mtime=time.time() - 60), listdir=lambda p: [],
         ),
     }
     reg.update(extra_sections(host))

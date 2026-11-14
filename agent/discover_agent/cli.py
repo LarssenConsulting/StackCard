@@ -65,6 +65,7 @@ def cmd_enroll(args, paths):
     cfg = config.Config(
         url=url, token=body["token"], ca_file=args.ca_file, pin_sha256=args.pin_sha256,
         weekly_interval_days=previous.weekly_interval_days if previous else config.DEFAULT_WEEKLY_INTERVAL_DAYS,
+        apt_refresh_hours=previous.apt_refresh_hours if previous else config.DEFAULT_APT_REFRESH_HOURS,
     )
     config.save(paths, cfg)
     print(f"Serveur enrôlé (id {body.get('server_id')}).")
@@ -116,7 +117,9 @@ def cmd_run(args, paths):
 
 
 def cmd_collect(args, paths):
-    # Weekly (level 3) sections run only with --full; collect never touches state.json.
+    # Weekly (level 3) sections run only with --full; collect never touches state.json. It is not
+    # read-only for APT though: the apt_updates section may refresh the APT cache (`apt-get update`)
+    # when it is older than apt_refresh_hours, and then writes its attempt marker in the state directory.
     snap = snapshot.build_snapshot(sections_due=set(sections.WEEKLY)) if args.full else snapshot.build_snapshot()
     print(json.dumps(snap, indent=2, ensure_ascii=False))
     return 0

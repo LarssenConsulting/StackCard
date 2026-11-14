@@ -19,7 +19,7 @@ ProtectKernelModules=yes
 ProtectControlGroups=yes
 RestrictSUIDSGID=yes
 LockPersonality=yes
-# Worst case: 16 min of sections, plus the inventory POST (300 s per socket operation).
+# Worst case: about 19.5 min of sections (2 weekly x 300 s, apt_updates 210 s, 12 x 30 s), plus the inventory POST (300 s per socket operation).
 TimeoutStartSec=30min
 Nice=10
 IOSchedulingClass=idle

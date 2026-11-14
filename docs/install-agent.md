@@ -83,7 +83,7 @@ sudo discover-agent enroll --url https://sentinel.example.fr --token <jeton>
 
 ```bash
 sudo discover-agent status           # dernier envoi, dernière erreur, erreurs de collecte
-sudo discover-agent collect | less   # exactement ce qui serait envoyé, sans l'envoyer
+sudo discover-agent collect | less   # exactement ce qui serait envoyé, sans l'envoyer (peut rafraîchir le cache APT)
 systemctl list-timers discover-agent.timer
 journalctl -u discover-agent.service
 ```
@@ -150,7 +150,42 @@ L'agent ne lit jamais `/etc/shadow` ni les identifiants des runners GitHub.
 options `-p…`/`--password=…`, `user:motdepasse@` et `jeton@` dans une URL http(s) ou ftp, `curl -u`, `redis-cli -a`, `docker login -p`, `auth=…`, les valeurs des clés contenant
 `PASS`, `SECRET`, `KEY`, `TOKEN` ou `SALT`, les hachages de mots de passe et les clés SSH collées. Il
 reconnaît des formes connues : un secret écrit autrement peut passer. Vérifiez
-`discover-agent collect` avant d'enrôler un serveur sensible.
+`discover-agent collect` avant d'enrôler un serveur sensible. Attention : `collect` n'envoie rien mais peut lancer
+`apt-get update` (cache de plus de `apt_refresh_hours` heures) et écrire sa marque dans `/var/lib/discover-agent`.
+
+## Mises à jour APT (agent 0.6)
+
+La section `apt_updates` (une de plus que les 14 ci-dessus, horaire) remonte les mises à jour en attente, dont
+celles de sécurité, et les paquets bloqués (`apt-mark hold`). Elle est affichée dans l'onglet « Mises à jour » du
+serveur et dans la page « Mises à jour » de la flotte. **Déployez d'abord le central.**
+
+Commandes lancées, toutes avec des chemins absolus, la locale C et un environnement propre :
+
+- `/usr/bin/apt-get update -q -o DPkg::Lock::Timeout=0` pour rafraîchir le cache, **seulement si** le cache APT
+  et la dernière tentative de l'agent (`/var/lib/discover-agent/apt-refresh-attempt`) datent tous deux de plus de
+  `apt_refresh_hours` heures ;
+- `/usr/bin/apt-get -s -o Debug::NoLocking=1 dist-upgrade`, une **simulation** : rien n'est installé ni modifié ;
+- `/usr/bin/apt-mark showhold`.
+
+L'agent n'attend **jamais** un verrou APT. Si un autre `apt update` tient le verrou des listes (Ansible,
+`unattended-upgrades`, `apt-daily`), il passe son tour et lit le cache tel quel ; la section l'indique par
+`source_errors.apt_update = "locked"`. Pendant une installation `dpkg`, le verrou des listes est libre : son
+rafraîchissement a lieu quand même, sans conséquence. Un `apt` lancé par Ansible pendant ce rafraîchissement
+(120 s au plus) peut attendre le verrou : voir `update_cache_retries` dans `ansible.md`. La section a un
+budget de 210 s.
+
+Le redémarrage requis vient de la section `kernel`, pas de `apt_updates`.
+
+Réglage dans `/etc/discover-agent/agent.conf` (relu à chaque passage) :
+
+```ini
+[collect]
+apt_refresh_hours = 6
+```
+
+Défaut 6 ; une valeur absente, non entière ou inférieure à 1 vaut 6. Avec Ansible : voir `ansible.md`.
+Si le cache APT a plus de 24 h ou si le dernier envoi est en erreur, le serveur passe à l'état « périmé » dans le
+central, qui garde les dernières données valides avec leur date.
 
 ## MySQL : compte en lecture seule (si root n'est pas accessible par socket)
 

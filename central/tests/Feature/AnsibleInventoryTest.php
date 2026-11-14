@@ -109,3 +109,76 @@ it('refuses a request without a token', function () {
 it('refuses an address that is not allowed', function () {
     readApi($this, $this->token, 'inventory/ansible', '198.51.100.9')->assertForbidden();
 });
+
+/** Sets the derived APT columns the way IngestSnapshot does. */
+function withUpdates(Server $server, array $columns): Server
+{
+    $server->forceFill(array_merge([
+        'updates_received_at' => now(), 'apt_cache_updated_at' => now()->subHour(), 'updates_error' => null,
+    ], $columns))->save();
+
+    return $server;
+}
+
+it('groups servers with pending, security and reboot-required updates', function () {
+    withUpdates(ansibleServer('web01'), ['updates_count' => 2, 'security_updates_count' => 1, 'reboot_required' => true]);
+    withUpdates(ansibleServer('web02'), ['updates_count' => 3, 'security_updates_count' => 0, 'reboot_required' => false]);
+    withUpdates(ansibleServer('web03'), ['updates_count' => 0, 'security_updates_count' => 0, 'reboot_required' => false]);
+
+    readApi($this, $this->token, 'inventory/ansible')
+        ->assertJsonPath('updates_pending.hosts', ['web01', 'web02'])
+        ->assertJsonPath('security_updates.hosts', ['web01'])
+        ->assertJsonPath('reboot_required.hosts', ['web01'])
+        ->assertJsonPath('all.children', ['reboot_required', 'security_updates', 'updates_pending'])
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_updates_state', 'ok')
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_updates_pending', 2)
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_security_updates_pending', 1)
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_reboot_required', true)
+        ->assertJsonPath('_meta.hostvars.web03.stackcard_updates_pending', 0)
+        ->assertJsonPath('_meta.hostvars.web03.stackcard_reboot_required', false);
+});
+
+it('keeps a stale server with known updates in the update groups', function () {
+    withUpdates(ansibleServer('web01'), [
+        'updates_count' => 4, 'security_updates_count' => 2, 'reboot_required' => true,
+        'apt_cache_updated_at' => now()->subDays(3),
+    ]);
+
+    readApi($this, $this->token, 'inventory/ansible')
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_updates_state', 'stale')
+        ->assertJsonPath('updates_pending.hosts', ['web01'])
+        ->assertJsonPath('security_updates.hosts', ['web01'])
+        ->assertJsonPath('reboot_required.hosts', ['web01']);
+});
+
+it('puts a server with unknown updates in no update group', function () {
+    ansibleServer('web01')->forceFill(['updates_count' => 5, 'security_updates_count' => 5, 'reboot_required' => true])->save();
+
+    $response = readApi($this, $this->token, 'inventory/ansible')
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_updates_state', 'unknown')
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_updates_pending', null)
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_security_updates_pending', null)
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_reboot_required', true);
+
+    expect($response->json())->not->toHaveKey('updates_pending')->not->toHaveKey('security_updates');
+});
+
+it('keeps the reboot flag and group independent of the updates state', function () {
+    // Older agents send the kernel section but no apt_updates one: the state stays unknown.
+    ansibleServer('web01')->forceFill(['reboot_required' => true])->save();
+    ansibleServer('web02', ['primary_ip' => '203.0.113.6'])->forceFill(['reboot_required' => false])->save();
+
+    readApi($this, $this->token, 'inventory/ansible')
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_updates_state', 'unknown')
+        ->assertJsonPath('_meta.hostvars.web01.stackcard_reboot_required', true)
+        ->assertJsonPath('_meta.hostvars.web02.stackcard_reboot_required', false)
+        ->assertJsonPath('reboot_required.hosts', ['web01'])
+        ->assertJsonMissingPath('updates_pending');
+});
+
+it('does not emit empty update groups', function () {
+    withUpdates(ansibleServer('web01'), ['updates_count' => 0, 'security_updates_count' => 0, 'reboot_required' => false]);
+
+    expect(readApi($this, $this->token, 'inventory/ansible')->json())
+        ->not->toHaveKey('updates_pending')->not->toHaveKey('security_updates')->not->toHaveKey('reboot_required');
+});

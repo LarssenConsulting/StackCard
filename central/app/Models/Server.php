@@ -22,6 +22,9 @@ class Server extends Model
     /** A server that has not reported for this long is shown as stale. */
     public const STALE_AFTER_HOURS = 3;
 
+    /** The pending-updates figures are trusted only while the APT cache is younger than this. */
+    public const UPDATES_STALE_AFTER_HOURS = 24;
+
     protected $fillable = [
         'name', 'hostname', 'fqdn', 'machine_id', 'primary_ip', 'os', 'kernel', 'virtualization',
         'apache_version', 'mysql_version', 'docker_version', 'agent_version', 'status', 'last_seen_at',
@@ -32,7 +35,11 @@ class Server extends Model
 
     protected function casts(): array
     {
-        return ['last_seen_at' => 'datetime', 'slug_locked_at' => 'datetime', 'ansible_excluded' => 'boolean'];
+        return [
+            'last_seen_at' => 'datetime', 'slug_locked_at' => 'datetime', 'ansible_excluded' => 'boolean',
+            'apt_cache_updated_at' => 'datetime', 'updates_received_at' => 'datetime', 'reboot_required' => 'boolean',
+            'updates_count' => 'integer', 'security_updates_count' => 'integer',
+        ];
     }
 
     protected static function booted(): void
@@ -176,6 +183,39 @@ class Server extends Model
     public function snapshots(): HasMany
     {
         return $this->hasMany(Snapshot::class);
+    }
+
+    public function updates(): HasMany
+    {
+        return $this->hasMany(ServerUpdate::class);
+    }
+
+    /**
+     * How far the pending-updates figures can be trusted: `unknown` (no valid report yet), `stale`
+     * (the last report failed, or the APT cache is missing or older than UPDATES_STALE_AFTER_HOURS),
+     * `ok`.
+     */
+    public function updatesState(): string
+    {
+        if ($this->updates_received_at === null) {
+            return 'unknown';
+        }
+        if ($this->updates_error !== null || $this->apt_cache_updated_at === null
+            || $this->apt_cache_updated_at->lt(now()->subHours(self::UPDATES_STALE_AFTER_HOURS))
+            || $this->apt_cache_updated_at->gt(now()->addHour())) {
+            return 'stale';
+        }
+
+        return 'ok';
+    }
+
+    /**
+     * Data of the newest section of that name that holds a valid (error-free) payload, or null.
+     */
+    public function latestValidSection(string $name): ?ServerSection
+    {
+        return $this->sections()->where('section', $name)
+            ->whereNull('error')->whereNotNull('data')->orderByDesc('id')->first();
     }
 
     public function sections(): HasMany
