@@ -1,0 +1,15 @@
+# Dependencies and generated files: not StackCard code
+central/vendor/
+central/node_modules/
+central/storage/
+central/bootstrap/cache/
+central/public/js/
+central/public/css/
+central/public/fonts/
+central/public/build/
+agent/dist/
+graphify-out/
+# Local only, never committed (private key, ad-hoc inputs, tooling)
+_ssl/
+_inputs/
+.superpowers/

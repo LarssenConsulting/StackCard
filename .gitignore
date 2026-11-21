@@ -8,3 +8,6 @@ _inputs/
 
 __pycache__/
 *.pyc
+
+# Graphe graphify (local, reprend le contenu du code)
+graphify-out/
