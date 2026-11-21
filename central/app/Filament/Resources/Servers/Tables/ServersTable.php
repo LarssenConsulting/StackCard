@@ -9,6 +9,7 @@ use App\Filament\Resources\Servers\Schemas\ServerStatus;
 use App\Models\Server;
 use App\Support\AgentRelease;
 use App\Support\DisplaySettings;
+use App\Support\FirewallStatus;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -72,6 +73,16 @@ class ServersTable
                     ->description(fn (Server $record) => $record->reboot_required ? 'redémarrage requis' : null)
                     ->color(fn (Server $record) => self::updatesColor($record))
                     ->tooltip(fn (Server $record) => self::updatesTooltip($record)),
+                TextColumn::make('firewall')
+                    ->label('Pare-feu')
+                    ->badge()
+                    ->state(fn (Server $record) => FirewallStatus::badge($record->firewall_engines)['label'])
+                    ->color(fn (Server $record) => FirewallStatus::badge($record->firewall_engines)['color'])
+                    ->tooltip(fn (Server $record) => match (FirewallStatus::protects($record->firewall_engines)) {
+                        null => 'Pas encore déterminé : il faut un inventaire avec la section réseau (agent 0.5 ou plus récent)',
+                        false => 'Aucune règle ne filtre le trafic entrant (UFW, nftables, iptables). Le pare-feu de l’hébergeur n’est pas visible d’ici.',
+                        true => 'Filtre le trafic entrant',
+                    }),
                 TextColumn::make('os')->label('Système')->toggleable()->placeholder('—'),
                 TextColumn::make('sites_count')->label('Sites')->counts('sites')->sortable(),
                 TextColumn::make('databases_count')->label('Bases')->counts('databases')->sortable(),
@@ -100,6 +111,15 @@ class ServersTable
                     ->label('Mises à jour de sécurité')
                     ->toggle()
                     ->query(fn (Builder $query) => $query->where('security_updates_count', '>', 0)),
+                Filter::make('no_firewall')
+                    ->label('Sans pare-feu')
+                    ->toggle()
+                    ->query(function (Builder $query) {
+                        $query->whereNotNull('firewall_engines');
+                        foreach (['ufw', 'nftables', 'iptables', 'iptables_legacy'] as $engine) {
+                            $query->whereJsonDoesntContain('firewall_engines', $engine);
+                        }
+                    }),
                 Filter::make('reboot_required')
                     ->label('Redémarrage requis')
                     ->toggle()

@@ -329,9 +329,8 @@ it('lists the UFW rules of a server and shows its default policies', function ()
         ->assertSee('IPv6');
 
     Livewire::test(ViewServer::class, ['record' => $this->web->getRouteKey()])
-        ->assertSee('Pare-feu UFW')
-        ->assertSee('Actif')
-        ->assertSee('entrant deny, sortant allow, routé disabled');
+        ->assertSee('Pare-feu')
+        ->assertSee('UFW actif · entrant deny, sortant allow, routé disabled');
 });
 
 it('says when UFW is inactive', function () {

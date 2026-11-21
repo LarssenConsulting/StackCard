@@ -55,7 +55,7 @@
         <div class="card b-central"><h3>Sites</h3><p>Vhosts Apache, type (PHP-FPM, Node, Docker, proxy, statique), utilisateur système, bases liées, technologies.</p></div>
         <div class="card b-central"><h3>Mises à jour</h3><p>Une ligne par paquet : installé, disponible, sécurité, origine ; en tête l’âge du cache, le redémarrage requis, les paquets bloqués.</p></div>
         <div class="card b-central"><h3>Applications Node · Conteneurs Docker</h3><p>Processus Node en écoute et conteneurs, rattachés aux sites qui les servent.</p></div>
-        <div class="card b-central"><h3>Pare-feu</h3><p>Une table par moteur : UFW, nftables, iptables, Fail2Ban.</p></div>
+        <div class="card b-central"><h3>Pare-feu</h3><p>Une table par moteur : UFW, nftables, iptables, Fail2Ban. En tête de fiche et dans la liste des serveurs, « Pare-feu » nomme les moteurs qui filtrent vraiment le trafic entrant (politique ou règle drop/reject sur l’entrée) : « Aucun » en rouge, « Fail2Ban seul » en orange.</p></div>
         <div class="card b-central"><h3>Boot</h3><p>Heure de démarrage, noyau en cours, redémarrage requis, puis les systèmes de fichiers montés (ext4, xfs, btrfs, vfat) ; ceux en lecture seule sont signalés en rouge.</p></div>
         <div class="card b-central"><h3>Bases de données · Comptes MySQL</h3><p>Bases, tailles, comptes et droits (jamais les empreintes de mot de passe).</p></div>
         <div class="card b-central"><h3>État détaillé · Historique des envois</h3><p>Les sections, avec leur historique de changements, et les derniers inventaires reçus.</p></div>

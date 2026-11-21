@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Servers\Schemas;
 use App\Models\Server;
 use App\Support\AgentRelease;
 use App\Support\DisplaySettings;
+use App\Support\FirewallStatus;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -54,19 +55,12 @@ class ServerInfolist
                         TextEntry::make('apache_version')->label('Apache')->placeholder('—'),
                         TextEntry::make('mysql_version')->label('MySQL / MariaDB')->placeholder('—'),
                         TextEntry::make('docker_version')->label('Docker')->placeholder('—'),
-                        TextEntry::make('ufw_status')
-                            ->label('Pare-feu UFW')
+                        TextEntry::make('firewall_engines')
+                            ->label('Pare-feu')
                             ->badge()
-                            ->formatStateUsing(fn (string $state) => match ($state) {
-                                'active' => 'Actif',
-                                'inactive' => 'Inactif',
-                                default => $state,
-                            })
-                            ->color(fn (string $state) => $state === 'active' ? 'success' : 'danger')
-                            ->helperText(fn (Server $record) => $record->ufw_default_incoming
-                                ? "Par défaut : entrant {$record->ufw_default_incoming}, sortant {$record->ufw_default_outgoing}, routé {$record->ufw_default_routed} · journalisation {$record->ufw_logging}"
-                                : null)
-                            ->placeholder('—'),
+                            ->state(fn (Server $record) => FirewallStatus::badge($record->firewall_engines)['label'])
+                            ->color(fn (Server $record) => FirewallStatus::badge($record->firewall_engines)['color'])
+                            ->helperText(fn (Server $record) => self::firewallHelp($record)),
                     ]),
                 Section::make('Agent')
                     ->schema([
@@ -94,5 +88,23 @@ class ServerInfolist
                     ]),
                 TextEntry::make('notes')->label('Notes')->placeholder('—')->columnSpanFull(),
             ]);
+    }
+
+    /** UFW state and policies, and what the badge does not show. */
+    private static function firewallHelp(Server $record): ?string
+    {
+        $parts = [];
+        $parts[] = match ($record->ufw_status) {
+            'active' => "UFW actif · entrant {$record->ufw_default_incoming}, sortant {$record->ufw_default_outgoing}, routé {$record->ufw_default_routed} · journalisation {$record->ufw_logging}",
+            'inactive' => 'UFW inactif',
+            null => null,
+            default => "UFW : {$record->ufw_status}",
+        };
+        if (FirewallStatus::protects($record->firewall_engines) === null) {
+            $parts[] = 'Moteurs non déterminés : il faut un inventaire avec la section réseau (agent 0.5 ou plus récent)';
+        }
+        $parts[] = 'Détail dans l’onglet « Pare-feu »';
+
+        return implode(' · ', array_filter($parts));
     }
 }

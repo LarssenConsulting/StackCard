@@ -38,7 +38,7 @@ class Server extends Model
         return [
             'last_seen_at' => 'datetime', 'slug_locked_at' => 'datetime', 'ansible_excluded' => 'boolean',
             'apt_cache_updated_at' => 'datetime', 'updates_received_at' => 'datetime', 'reboot_required' => 'boolean',
-            'updates_count' => 'integer', 'security_updates_count' => 'integer',
+            'updates_count' => 'integer', 'security_updates_count' => 'integer', 'firewall_engines' => 'array',
         ];
     }
 

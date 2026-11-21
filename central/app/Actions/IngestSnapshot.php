@@ -7,6 +7,7 @@ use App\Models\NodeApp;
 use App\Models\Server;
 use App\Models\ServerSection;
 use App\Models\ServerUpdate;
+use App\Support\FirewallStatus;
 use App\Models\Snapshot;
 use App\Models\SiteDomain;
 use Illuminate\Support\Arr;
@@ -85,6 +86,7 @@ class IngestSnapshot
         $this->storeFirewallRules($server, $snapshot['ufw']['rules'] ?? []);
         $this->storeMysql($server, $snapshot['mysql'] ?? null);
         $this->storeSections($server, $sections);
+        $this->storeFirewall($server, $sections);
         $this->storeUpdates($server, $sections);
 
         return $record;
@@ -132,6 +134,20 @@ class IngestSnapshot
                 'first_seen_at' => now(),
                 'last_seen_at' => now(),
             ]);
+        }
+    }
+
+    /**
+     * Which firewalls filter incoming traffic (FirewallStatus). An agent without sections is judged on UFW
+     * alone; a network section in error or not sent keeps the last answer. Saved by storeUpdates.
+     */
+    private function storeFirewall(Server $server, array $sections): void
+    {
+        $network = $sections['network'] ?? null;
+        if ($network === null) {
+            $server->forceFill(['firewall_engines' => FirewallStatus::engines(null, $server->ufw_status)]);
+        } elseif (($network['error'] ?? null) === null && is_array($network['data'] ?? null)) {
+            $server->forceFill(['firewall_engines' => FirewallStatus::engines($network['data'], $server->ufw_status)]);
         }
     }
 
