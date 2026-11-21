@@ -39,6 +39,8 @@ Agent 0.5 adds the optional top-level `sections` object (still `schema_version` 
 
 Agent 0.6 adds a 15th hourly section, `apt_updates` (pending upgrades with a `security` flag, `held` packages, `cache_updated_at`); schema in `docs/superpowers/specs/2026-11-14-apt-updates-design.md`. Local setting `[collect] apt_refresh_hours` in `agent.conf` (default 6, absent/invalid/< 1 → 6, read on every run; not a central order).
 
+Agent 0.7 adds a 16th hourly section, `mounts` (`sections/mounts.py`: `/usr/bin/findmnt -rno TARGET,SOURCE,FSTYPE,OPTIONS -t ext4,xfs,btrfs,vfat` → `filesystems: [{target, source, fstype, options, read_only}]`; exit 1 without stderr is `[]`). Shown on the server's « Boot » tab (`BootRelationManager`, with boot time and running kernel from the latest `kernel` section; read-only mounts flagged).
+
 ## Agent architecture
 
 `cli.py` (enroll/collect/run/status) → `snapshot.build_snapshot` runs collectors in isolation (an exception becomes an `errors[]` entry, the rest is still sent) → `transport.post_json` (HTTPS only, certificate verification cannot be disabled, optional SPKI pin parsed from DER without third-party libs).

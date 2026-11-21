@@ -6,6 +6,7 @@ use App\Filament\Resources\Servers\Pages\CreateServer;
 use App\Filament\Resources\Servers\Pages\EditServer;
 use App\Filament\Resources\Servers\Pages\ListServers;
 use App\Filament\Resources\Servers\Pages\ViewServer;
+use App\Filament\Resources\Servers\RelationManagers\BootRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\DatabasesRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\DbUsersRelationManager;
 use App\Filament\Resources\Servers\RelationManagers\DockerContainersRelationManager;
@@ -62,6 +63,7 @@ class ServerResource extends Resource
             NodeAppsRelationManager::class,
             DockerContainersRelationManager::class,
             FirewallRulesRelationManager::class,
+            BootRelationManager::class,
             DatabasesRelationManager::class,
             DbUsersRelationManager::class,
             SectionsRelationManager::class,

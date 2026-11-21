@@ -13,8 +13,8 @@ class ServerSection extends Model
 {
     /** Same names and order as SECTION_NAMES in the agent (agent/discover_agent/sections/core.py). */
     public const NAMES = [
-        'packages', 'apt_sources', 'apt_updates', 'kernel', 'restart_needed', 'kernel_surface', 'network', 'php',
-        'apache', 'site_dependencies', 'node_apps', 'docker', 'persistence', 'integrity', 'code_patterns',
+        'packages', 'apt_sources', 'apt_updates', 'kernel', 'restart_needed', 'mounts', 'kernel_surface', 'network',
+        'php', 'apache', 'site_dependencies', 'node_apps', 'docker', 'persistence', 'integrity', 'code_patterns',
     ];
 
     /** Largest `data` kept for one section, as JSON (the agent applies the same cap). */

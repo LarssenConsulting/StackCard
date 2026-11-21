@@ -18,5 +18,5 @@ it('creates a fake server with PHP sites, Node apps and Docker containers, and r
         ->and($server->firewallRules()->count())->toBe(6)
         ->and($server->snapshots()->count())->toBe(2)
         // Seeded twice with the same sections: one row each, not two.
-        ->and($server->sections()->count())->toBe(14);
+        ->and($server->sections()->count())->toBe(15);
 });

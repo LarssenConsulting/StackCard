@@ -3,7 +3,7 @@
     $steps = [
         [1, 'agent', 'Timer systemd', 'toutes les heures,', '± 5 min de décalage', 20, 50],
         [2, 'agent', 'Lecture seule', 'Apache, PHP, MySQL,', 'Docker, Node, UFW…', 20, 190],
-        [3, 'agent', 'Sections', '15 sections d’état,', 'dont 2 hebdomadaires', 20, 330],
+        [3, 'agent', 'Sections', '16 sections d’état,', 'dont 2 hebdomadaires', 20, 330],
         [4, 'agent', 'Masquage', 'mots de passe, jetons :', 'retirés ou « *** »', 310, 330],
         [5, 'central', 'Envoi HTTPS', 'POST vers le central,', 'certificat vérifié', 310, 190],
         [6, 'central', 'Réponse « ok »', 'le central stocke,', 'aucun ordre en retour', 310, 50],
@@ -12,7 +12,7 @@
 <figure class="diagram">
     <svg class="dg" viewBox="0 0 560 450" role="img" aria-labelledby="cycle-title cycle-desc">
         <title id="cycle-title">Un passage horaire de l’agent</title>
-        <desc id="cycle-desc">Six étapes en boucle. 1 : le timer systemd lance l’agent toutes les heures, avec jusqu’à 5 minutes de décalage aléatoire. 2 : l’agent lit la configuration sans rien modifier. 3 : il construit 15 sections d’état, dont 2 hebdomadaires. 4 : il masque les secrets. 5 : il envoie l’inventaire en HTTPS au central, certificat vérifié. 6 : le central répond « ok » et ne renvoie aucun ordre. Une heure plus tard, le cycle recommence.</desc>
+        <desc id="cycle-desc">Six étapes en boucle. 1 : le timer systemd lance l’agent toutes les heures, avec jusqu’à 5 minutes de décalage aléatoire. 2 : l’agent lit la configuration sans rien modifier. 3 : il construit 16 sections d’état, dont 2 hebdomadaires. 4 : il masque les secrets. 5 : il envoie l’inventaire en HTTPS au central, certificat vérifié. 6 : le central répond « ok » et ne renvoie aucun ordre. Une heure plus tard, le cycle recommence.</desc>
         <defs>
             <marker id="cycle-h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
         </defs>

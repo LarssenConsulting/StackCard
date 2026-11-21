@@ -15,8 +15,8 @@ from discover_agent.redact import redact
 
 # Order of the spec; also the order of the envelopes sent to the central.
 SECTION_NAMES = (
-    "packages", "apt_sources", "apt_updates", "kernel", "restart_needed", "kernel_surface", "network", "php",
-    "apache", "site_dependencies", "node_apps", "docker", "persistence", "integrity", "code_patterns",
+    "packages", "apt_sources", "apt_updates", "kernel", "restart_needed", "mounts", "kernel_surface", "network",
+    "php", "apache", "site_dependencies", "node_apps", "docker", "persistence", "integrity", "code_patterns",
 )
 # Level 3: slow, so collected on their own schedule and given a longer timeout.
 WEEKLY = ("integrity", "code_patterns")

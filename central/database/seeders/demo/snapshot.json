@@ -1172,6 +1172,38 @@
         ]
       }
     },
+    "mounts": {
+      "collected_at": "2026-11-01T08:00:00Z",
+      "sha256": "9b9919198cc22b4222e6e9205cf9ada44bc355cac27232a844d8210863443798",
+      "error": null,
+      "source_errors": {},
+      "data": {
+        "filesystems": [
+          {
+            "target": "/",
+            "source": "/dev/sda1",
+            "fstype": "ext4",
+            "options": [
+              "rw",
+              "relatime"
+            ],
+            "read_only": false
+          },
+          {
+            "target": "/boot/efi",
+            "source": "/dev/sda15",
+            "fstype": "vfat",
+            "options": [
+              "rw",
+              "relatime",
+              "fmask=0077",
+              "dmask=0077"
+            ],
+            "read_only": false
+          }
+        ]
+      }
+    },
     "kernel_surface": {
       "collected_at": "2026-11-01T08:00:00Z",
       "sha256": "c601d27455e751a5c74439c7e109c2aab728560e547a71d7ef987ca7c3640286",

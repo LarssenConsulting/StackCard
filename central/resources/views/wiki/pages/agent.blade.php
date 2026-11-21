@@ -6,6 +6,7 @@
         ['apt_sources', 'dépôts APT actifs, origine des paquets clés, état d’Ubuntu Pro'],
         ['apt_updates', 'mises à jour APT en attente (dont sécurité) et paquets bloqués, par simulation'],
         ['kernel', 'noyaux en service et installés, redémarrage requis, livepatch'],
+        ['mounts', 'systèmes de fichiers locaux montés (ext4, xfs, btrfs, vfat) et ceux en lecture seule, via findmnt'],
         ['restart_needed', 'services qui tournent encore sur d’anciennes bibliothèques (needrestart)'],
         ['kernel_surface', 'quelques valeurs sysctl, modules chargés, surcharges modprobe'],
         ['network', 'ports en écoute, nftables, iptables, Fail2Ban, UFW'],
@@ -73,7 +74,7 @@ sudo discover-agent enroll --url https://central.example.com --token &lt;jeton&g
     <h2 id="sections">Les sections</h2>
     <p>
         En plus de l’inventaire de base (identité, IP, sites Apache, bases MySQL, Node, Docker, UFW), l’agent envoie
-        <strong>15 sections d’état</strong>, affichées dans l’onglet « État détaillé » de la fiche serveur. Chaque section
+        <strong>16 sections d’état</strong>, affichées dans l’onglet « État détaillé » de la fiche serveur. Chaque section
         porte sa date de collecte, son empreinte et une éventuelle erreur : une liste vide veut dire « lu, rien trouvé »,
         une valeur absente veut dire « non lu ».
     </p>

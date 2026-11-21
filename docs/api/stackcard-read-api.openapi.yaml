@@ -127,6 +127,7 @@ paths:
         | `apt_updates` | `{cache_updated_at, upgrades, held}`. `cache_updated_at` : date du dernier `apt-get update` réussi (`null` si inconnue). `upgrades` : mises à jour en attente `[{package, arch, installed, candidate, origins, security}]` (`installed` vaut `null` pour un nouveau paquet, `origins` liste les suites d'origine, `security` est vrai pour une suite de sécurité), `null` si non lu. `held` : paquets en `apt-mark hold`, `null` si non lu. Une entrée `source_errors.apt_update` (`locked`, `timeout` ou message) signale un `apt-get update` non effectué : lire alors `cache_updated_at`. |
         | `kernel` | `{running, installed, reboot_required, reboot_required_pkgs, boot_time, livepatch}`. `livepatch` : `{kernel, running, check_state, patch_state, version, fixes: [{name, patched}]}`. |
         | `restart_needed` | `{needrestart, masters}`. `needrestart` : `{kernel_current, kernel_expected, kernel_status, services}`. `masters` : processus maîtres `php-fpm*` et `apache2`, `[{comm, pid, started_at}]`. |
+        | `mounts` | `{filesystems}` : systèmes de fichiers locaux montés (`findmnt -t ext4,xfs,btrfs,vfat`), `[{target, source, fstype, options, read_only}]` triés par `target` ; `options` est la liste des options de montage, `read_only` vaut `true` si `ro` en fait partie. `null` si findmnt n'a pas pu être lu (`source_errors.findmnt`). Agent 0.7 ou plus récent. |
         | `kernel_surface` | `{sysctl, modules, modprobe}`. `sysctl` : `{clé: valeur}` pour une liste de clés sensibles, `null` pour un sysctl inexistant. `modules` : modules chargés. `modprobe` : lignes `blacklist` et `install`. |
         | `network` | `{sockets, mptcp_listeners, nft, iptables, iptables_legacy, fail2ban, ufw, services}`. `sockets` : ports en écoute, `[{protocol, address, port, process, pid, public}]`, `public` vaut `false` pour le loopback. `nft` : JSON de `nft -j list ruleset`, sans compteurs. `iptables` et `iptables_legacy` : `{v4, v6}`, les lignes de `iptables-save` dans leur ordre d'application. `fail2ban` : `{enabled, active, jails, config_errors}`, jamais les IP bannies. `ufw` : `{status, logging, default_incoming, default_outgoing, default_routed, rules}`. `services` : services de mitigation `[{name, enabled, active}]`. |
         | `php` | `{versions, sites}`. `versions` : `[{version, sapis, pools}]`. `sapis` : `fpm`, `apache2`, `cli`, chacun `{active, source, values, php_version, build_date, extensions}`. `values` : toutes les directives ini. `extensions` : `[{name, versions}]`, dont les bibliothèques liées (OpenSSL, libxml, cURL). `pools` : `[{name, file, listen, listen_allowed_clients, user, group, php_values, settings}]`. `sites` : `[{server_name, port, document_root, type, php_version, mode, pool, allow_override}]`. Pour `apache2` (mod_php), `values` ne contient que ce qu'écrivent les fichiers ini : une clé `null` signifie « absente des fichiers », pas « désactivée » ; `php_version`, `build_date` et `extensions` y valent toujours `null`. |
@@ -493,6 +494,7 @@ components:
         - apt_updates
         - kernel
         - restart_needed
+        - mounts
         - kernel_surface
         - network
         - php

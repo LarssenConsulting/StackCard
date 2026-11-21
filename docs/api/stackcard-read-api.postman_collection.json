@@ -326,6 +326,47 @@
           "response": []
         },
         {
+          "name": "mounts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json().data;",
+                  "pm.test('Bonne section', () => pm.expect(body.section).to.eql('mounts'));",
+                  "pm.test('data vaut null si error est renseigné', () => { if (body.error !== null) { pm.expect(body.data).to.eql(null); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/servers/{{serverId}}/sections/mounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "servers",
+                "{{serverId}}",
+                "sections",
+                "mounts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "kernel_surface",
           "event": [
             {

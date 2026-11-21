@@ -27,6 +27,7 @@ from discover_agent.sections import (
     integrity,
     kernel,
     kernel_surface,
+    mounts,
     network,
     node_apps,
     packages,
@@ -237,6 +238,7 @@ def registry(host, **extra):
             listdir=host.listdir,
         ),
         # Nothing to upgrade, nothing held, fresh package lists: no `apt-get update` is run.
+        "mounts": partial(mounts.collect, run_full=lambda cmd, **kw: (0, "/ /dev/sda1 ext4 rw,relatime\n", "")),
         "apt_updates": partial(
             apt_updates.collect, runner=lambda cmd, **kw: "", run_full=None, refresh_hours=6,
             stat=lambda path: types.SimpleNamespace(st_mtime=time.time() - 60), listdir=lambda p: [],
